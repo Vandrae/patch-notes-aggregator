@@ -161,3 +161,5 @@ in an interview.
 
 Items #6, #8, #9, #10, #12 above can be layered in as each relevant piece
 gets built rather than solved upfront.
+
+![Product Search](https://github.com/Vandrae/patch-notes-aggregator/blob/e9d164473e3e8058e39730a9f1c53e9344e49067/Screenshot%202026-08-17%20041726.png)
