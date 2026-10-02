@@ -87,14 +87,13 @@ class SteamNewsClientTest {
     }
 
     @Test
-    void retriesRateLimitingResponses() {
+    void aRateLimitingResponseIsReportedAtOnceInsteadOfBeingRetried() {
+        // retrying straight away would be one more request counted against the limit; the caller decides how long to wait
         server.expect(ExpectedCount.once(), requestTo(org.hamcrest.Matchers.startsWith(BASE)))
                 .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
-        server.expect(ExpectedCount.once(), requestTo(org.hamcrest.Matchers.startsWith(BASE)))
-                .andRespond(withSuccess(BODY, MediaType.APPLICATION_JSON));
 
-        assertThat(client.getNewsForApp(1374490)).hasSize(2);
-        server.verify();
+        assertThatThrownBy(() -> client.getNewsForApp(1374490)).isInstanceOf(SteamRateLimitedException.class);
+        server.verify(); // exactly one request
     }
 
     @Test

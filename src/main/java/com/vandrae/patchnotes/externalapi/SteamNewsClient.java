@@ -14,8 +14,10 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 
 /**
- * Client for Steam's news API. Transient failures (I/O errors, 5xx, 429) are retried with exponential
- * backoff; other errors (e.g. 400) fail immediately. A 403/404 is not an error: it is Steam's way of saying the app
+ * Client for Steam's news API. Transient failures (I/O errors, 5xx) are retried with exponential
+ * backoff; other errors (e.g. 400) fail immediately. HTTP 429 is not retried here: an immediate retry is itself a
+ * request that counts against the limit, so it is reported as a {@link SteamRateLimitedException} and the caller, which
+ * knows how fast it has been going, decides how long to stand down. A 403/404 is not an error: it is Steam's way of saying the app
  * has no news feed, so it yields an empty list. Once retries are exhausted a {@link SteamApiException} is thrown,
  * so one network blip never poisons a source permanently.
  */
@@ -36,7 +38,7 @@ public class SteamNewsClient {
     SteamNewsClient(SteamProperties props, RestClient rest) {
         this.rest = rest;
         this.newsCount = props.newsCount();
-        this.retry = SteamHttp.retry(props, log);
+        this.retry = SteamHttp.retry(props, log, false);
     }
 
     /**
@@ -68,6 +70,9 @@ public class SteamNewsClient {
             if (hasNoNewsFeed(e.getCause())) {
                 log.debug("Steam has no news feed for app {} ({})", appId, SteamHttp.describe(e.getCause()));
                 return List.of();
+            }
+            if (SteamHttp.isRateLimit(e.getCause())) {
+                throw new SteamRateLimitedException("Steam news request for app " + appId + " was rate limited (HTTP 429)");
             }
             throw new SteamApiException("Steam news request for app " + appId + " failed after retries", e.getCause());
         }
