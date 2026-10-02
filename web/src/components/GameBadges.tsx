@@ -6,12 +6,13 @@ function tone(score: number): 'good' | 'mixed' | 'bad' {
   return score >= 7 ? 'good' : score >= 5 ? 'mixed' : 'bad';
 }
 
-/** The game's review rating ("Very Positive · 85%") and its genres, as small tags under the description. */
+/** The game's review rating ("Very Positive · 85%"), its ESRB age rating ("Mature 17+") and its genres, as small tags under the description. */
 export function GameBadges({ game }: { game: Game }) {
   const { data: options } = useFilterOptions();
   const labels = new Map(options?.genres.map((g) => [g.code, g.label]));
   const genres = game.genres ?? [];
-  if (!game.rating && genres.length === 0) return null;
+  const ageLabel = game.ageRating ? (options?.ageRatings.find((a) => a.code === game.ageRating)?.label ?? game.ageRating) : null;
+  if (!game.rating && genres.length === 0 && !ageLabel) return null;
 
   return (
     <div className="badges">
@@ -22,6 +23,11 @@ export function GameBadges({ game }: { game: Game }) {
         >
           {game.rating.label}
           {game.rating.percentPositive != null && <span className="badge-percent"> · {game.rating.percentPositive}%</span>}
+        </span>
+      )}
+      {ageLabel && (
+        <span className="badge badge-age" title="ESRB age rating">
+          {ageLabel}
         </span>
       )}
       {genres.map((code) => (

@@ -5,8 +5,8 @@ import { FILTER_OPTIONS, jsonResponse, renderApp, stubApi } from '../test-utils'
 import type { FeedPage as FeedPageData, Game, WatchlistItem } from '../types';
 import { FeedPage } from './FeedPage';
 
-const dragonwilds: Game = { id: 1, name: 'RuneScape: Dragonwilds', sourceType: 'STEAM_NEWS', steamAppId: 1374490, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
-const eldenRing: Game = { id: 2, name: 'Elden Ring', sourceType: 'STEAM_NEWS', steamAppId: 1245620, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
+const dragonwilds: Game = { id: 1, name: 'RuneScape: Dragonwilds', sourceType: 'STEAM_NEWS', steamAppId: 1374490, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null, ageRating: null };
+const eldenRing: Game = { id: 2, name: 'Elden Ring', sourceType: 'STEAM_NEWS', steamAppId: 1245620, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null, ageRating: null };
 
 const watch = (...games: Game[]): WatchlistItem[] => games.map((game) => ({ game, addedAt: '2026-09-01T00:00:00Z' }));
 
@@ -239,6 +239,23 @@ describe('FeedPage', () => {
       // a filter the selected game still passes keeps it selected
       await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
       await waitFor(() => expect(calls.some((c) => c.url.includes('gameId=2') && c.url.includes('minRating=8'))).toBe(true));
+    });
+
+    it('narrows by age rating too: the request carries it and the game chips follow', async () => {
+      const mature: Game = { ...eldenRpg, ageRating: 'MATURE' };
+      const teen: Game = { ...dragonwildsMmo, ageRating: 'TEEN' };
+      const { calls } = stubApi({
+        'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS),
+        'GET /api/catalog/status': () => jsonResponse(idleCatalog),
+        'GET /api/watchlist': () => jsonResponse(watch(teen, mature)),
+        'GET /api/feed': eldenFeed,
+      });
+      renderApp(<FeedPage />, '/feed?age=MATURE');
+
+      const group = await screen.findByRole('group', { name: /filter by game/i });
+      expect(group).toHaveTextContent('Elden Ring');
+      expect(group).not.toHaveTextContent('RuneScape: Dragonwilds');
+      expect(calls.some((c) => c.url.includes('/api/feed') && c.url.includes('age=MATURE'))).toBe(true);
     });
 
     it('drops the selected game when a new filter would exclude it', async () => {

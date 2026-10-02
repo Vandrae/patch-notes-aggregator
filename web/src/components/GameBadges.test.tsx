@@ -14,6 +14,7 @@ const game = (over: Partial<Game>): Game => ({
   iconUrl: null,
   genres: [],
   rating: null,
+  ageRating: null,
   ...over,
 });
 
@@ -37,6 +38,18 @@ describe('GameBadges', () => {
     expect(rating.closest('.badge')).toHaveClass('badge-good');
     expect(rating.closest('.badge')).toHaveTextContent('Very Positive · 92%');
     expect(rating.closest('.badge')).toHaveAttribute('title', '92% of user reviews are positive');
+  });
+
+  it('shows the ESRB age rating by its box wording, and the code itself if the wording is unknown', async () => {
+    stubApi({ 'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS) });
+    renderApp(<GameBadges game={game({ ageRating: 'MATURE' })} />);
+
+    const badge = await screen.findByText('Mature 17+');
+    expect(badge).toHaveClass('badge-age');
+    expect(badge).toHaveAttribute('title', 'ESRB age rating');
+
+    renderApp(<GameBadges game={game({ ageRating: 'ADULTS_ONLY' })} />);
+    expect(await screen.findByText('ADULTS_ONLY')).toBeInTheDocument();
   });
 
   it('colours mixed and negative ratings differently', () => {

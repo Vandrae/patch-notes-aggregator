@@ -780,3 +780,9 @@ a.row-title:hover {
 .badge-percent {
   font-weight: 500;
 }
+
+.badge-age {
+  color: var(--text);
+  border-color: var(--muted);
+  background: transparent;
+}

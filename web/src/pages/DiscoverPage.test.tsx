@@ -5,7 +5,7 @@ import { FILTER_OPTIONS, jsonResponse, renderApp, stubApi } from '../test-utils'
 import type { CatalogStatus, Game, GamesPage } from '../types';
 import { DiscoverPage } from './DiscoverPage';
 
-const deadlock: Game = { id: 7, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 1422450, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
+const deadlock: Game = { id: 7, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 1422450, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null, ageRating: null };
 
 const gamesPage = (content: Game[]): GamesPage => ({
   content,
@@ -42,7 +42,7 @@ describe('DiscoverPage', () => {
   });
 
   it('lets you tell same-named games apart by linking each to its Steam store page', async () => {
-    const lookalike: Game = { id: 8, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 513790, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
+    const lookalike: Game = { id: 8, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 513790, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null, ageRating: null };
     stubApi({
       'GET /api/catalog/status': () => jsonResponse(status({})),
       'GET /api/watchlist': () => jsonResponse([]),
@@ -192,6 +192,18 @@ describe('DiscoverPage', () => {
       await screen.findByText('Elden Ring');
       expect(calls.some((c) => c.url.includes('genre=ACTION&genre=RPG&minRating=9'))).toBe(true);
       expect(await screen.findByRole('button', { name: 'Action' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('sends the chosen age ratings to the API, from the address as well as from clicks', async () => {
+      const { calls } = stubDiscover(() => jsonResponse(gamesPage([rpg])));
+      renderApp(<DiscoverPage />, '/discover?age=MATURE');
+
+      await screen.findByText('Elden Ring');
+      expect(calls.some((c) => c.url.includes('age=MATURE'))).toBe(true);
+      expect(await screen.findByRole('button', { name: 'Mature 17+' })).toHaveAttribute('aria-pressed', 'true');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Teen' }));
+      await waitFor(() => expect(calls.some((c) => c.url.includes('age=MATURE&age=TEEN'))).toBe(true));
     });
 
     it("shows each game's rating and genres", async () => {

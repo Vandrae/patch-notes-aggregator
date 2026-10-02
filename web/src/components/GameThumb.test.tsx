@@ -14,6 +14,7 @@ const game: Game = {
   iconUrl: null,
   genres: [],
   rating: null,
+  ageRating: null,
 };
 
 describe('GameThumb', () => {

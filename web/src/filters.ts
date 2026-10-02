@@ -8,16 +8,19 @@ export interface Filters {
   genres: string[];
   /** Steam review level (1-9) a game must reach; 0 = any rating. */
   minRating: number;
+  /** ESRB age rating codes (e.g. "TEEN"); a game matches when it has one of them. Empty = any, even none at all. */
+  ages: string[];
 }
 
-export const NO_FILTERS: Filters = { genres: [], minRating: 0 };
+export const NO_FILTERS: Filters = { genres: [], minRating: 0, ages: [] };
 
-export const isFiltering = (f: Filters) => f.genres.length > 0 || f.minRating > 0;
+export const isFiltering = (f: Filters) => f.genres.length > 0 || f.minRating > 0 || f.ages.length > 0;
 
-/** Query-string tail for the API, e.g. "&genre=RPG&genre=ACTION&minRating=8"; empty when not filtering. */
+/** Query-string tail for the API, e.g. "&genre=RPG&genre=ACTION&minRating=8&age=TEEN"; empty when not filtering. */
 export function filterQuery(f: Filters): string {
   const parts = f.genres.map((g) => `&genre=${encodeURIComponent(g)}`);
   if (f.minRating > 0) parts.push(`&minRating=${f.minRating}`);
+  f.ages.forEach((a) => parts.push(`&age=${encodeURIComponent(a)}`));
   return parts.join('');
 }
 
@@ -25,25 +28,29 @@ export function filterQuery(f: Filters): string {
 export function matchesFilters(game: Game, f: Filters): boolean {
   const genreOk = f.genres.length === 0 || (game.genres ?? []).some((g) => f.genres.includes(g));
   const ratingOk = f.minRating === 0 || (game.rating?.score ?? 0) >= f.minRating;
-  return genreOk && ratingOk;
+  const ageOk = f.ages.length === 0 || (game.ageRating != null && f.ages.includes(game.ageRating));
+  return genreOk && ratingOk && ageOk;
 }
 
 const GENRE_PARAM = 'genre';
 const RATING_PARAM = 'rating';
+const AGE_PARAM = 'age';
 
 /** Reads and writes the filter in the URL's query string, leaving every other parameter (like the feed's game) alone. */
 export function useFilters() {
   const [params, setParams] = useSearchParams();
   const genreKey = params.getAll(GENRE_PARAM).join(',');
   const rating = params.get(RATING_PARAM);
+  const ageKey = params.getAll(AGE_PARAM).join(',');
 
   const filters = useMemo<Filters>(() => {
     const parsed = Number(rating);
     return {
       genres: genreKey ? genreKey.split(',') : [],
       minRating: Number.isInteger(parsed) && parsed >= 1 && parsed <= 9 ? parsed : 0,
+      ages: ageKey ? ageKey.split(',') : [],
     };
-  }, [genreKey, rating]);
+  }, [genreKey, rating, ageKey]);
 
   const update = useCallback(
     (next: Filters, alsoDrop: string[] = []) =>
@@ -52,9 +59,11 @@ export function useFilters() {
           const out = new URLSearchParams(current);
           out.delete(GENRE_PARAM);
           out.delete(RATING_PARAM);
+          out.delete(AGE_PARAM);
           alsoDrop.forEach((key) => out.delete(key));
           next.genres.forEach((g) => out.append(GENRE_PARAM, g));
           if (next.minRating > 0) out.set(RATING_PARAM, String(next.minRating));
+          next.ages.forEach((a) => out.append(AGE_PARAM, a));
           return out;
         },
         { replace: true },

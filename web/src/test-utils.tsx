@@ -52,4 +52,9 @@ export const FILTER_OPTIONS: FilterOptions = {
     { minRating: 8, label: 'Very Positive' },
     { minRating: 9, label: 'Overwhelmingly Positive' },
   ],
+  ageRatings: [
+    { code: 'EVERYONE', label: 'Everyone' },
+    { code: 'TEEN', label: 'Teen' },
+    { code: 'MATURE', label: 'Mature 17+' },
+  ],
 };

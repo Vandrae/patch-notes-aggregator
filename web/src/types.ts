@@ -19,6 +19,8 @@ export interface FilterOptions {
   genres: { code: string; label: string }[];
   /** "this rating or better" choices, lowest first */
   ratings: { minRating: number; label: string }[];
+  /** ESRB age ratings, youngest audience first */
+  ageRatings: { code: string; label: string }[];
 }
 
 export interface Game {
@@ -36,6 +38,8 @@ export interface Game {
   genres: string[];
   /** User-review rating; null for a game without reviews (or before details are fetched). */
   rating: Rating | null;
+  /** ESRB age rating code (e.g. "TEEN"); null when Steam shows none, which is common. */
+  ageRating: string | null;
 }
 
 export interface WatchlistItem {
