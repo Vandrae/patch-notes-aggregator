@@ -1,0 +1,78 @@
+package com.vandrae.patchnotes.catalog;
+
+import com.vandrae.patchnotes.catalog.internal.CatalogProperties;
+import com.vandrae.patchnotes.catalog.internal.Game;
+import com.vandrae.patchnotes.catalog.internal.GameRepository;
+import com.vandrae.patchnotes.catalog.internal.NameSearch;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+@Transactional(readOnly = true)
+public class CatalogService {
+
+    static final int MAX_PAGE_SIZE = 50;
+    /** Below this many characters a search matches names that START with the text only, not names that contain it. */
+    static final int MIN_CONTAINS_LENGTH = 3;
+
+    private final GameRepository games;
+    private final String imageBaseUrl;
+    private final String iconBaseUrl;
+
+    CatalogService(GameRepository games, CatalogProperties properties) {
+        this.games = games;
+        this.imageBaseUrl = properties.imageBaseUrl();
+        this.iconBaseUrl = properties.iconBaseUrl();
+    }
+
+    /**
+     * Name search that ignores case, accents, punctuation and trademark symbols. Results are ranked by relevance (the
+     * exact name, then names starting with the query, then names containing it, the last only for queries of 3+
+     * characters so one or two letters don't match half the catalog) and, within the same relevance, by popularity.
+     * A blank query lists the whole catalog, most popular first.
+     */
+    public Page<GameSummary> search(String query, int page, int size) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE)); // ordering is in the queries
+        if (query == null || query.isBlank()) {
+            return games.browse(pageable).map(this::toSummary);
+        }
+        String normalized = NameSearch.normalize(query);
+        if (normalized.isEmpty()) {
+            // something was typed but it is all punctuation ("%", "!!!"): that matches nothing, not everything
+            return Page.empty(pageable);
+        }
+        String prefix = normalized + "%";
+        String contains = normalized.length() >= MIN_CONTAINS_LENGTH ? "%" + normalized + "%" : prefix;
+        return games.search(normalized, prefix, contains, pageable).map(this::toSummary);
+    }
+
+    public Optional<GameSummary> findById(long id) {
+        return games.findById(id).map(this::toSummary);
+    }
+
+    public boolean exists(long id) {
+        return games.existsById(id);
+    }
+
+    public Map<Long, GameSummary> findAllById(Collection<Long> ids) {
+        return games.findAllById(ids).stream()
+                .map(this::toSummary)
+                .collect(Collectors.toMap(GameSummary::id, Function.identity()));
+    }
+
+    private GameSummary toSummary(Game game) {
+        String imageUrl = game.getImagePath() == null ? null : imageBaseUrl + game.getImagePath();
+        String iconUrl = game.getIconPath() == null ? null : iconBaseUrl + game.getIconPath();
+        return new GameSummary(game.getId(), game.getName(), game.getSourceType(), game.getSteamAppId(),
+                game.getShortDescription(), imageUrl, iconUrl);
+    }
+}
