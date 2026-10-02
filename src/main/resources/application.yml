@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: patch-notes-aggregator
+  config:
+    # Local secrets live in a git-ignored .env file (see .env.example)
+    import: optional:file:./.env[.properties]
+  datasource:
+    # Zero-setup default: file-backed H2 in MySQL mode. Use `--spring.profiles.active=mysql` for MySQL.
+    url: jdbc:h2:file:./data/patchnotes;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+  flyway:
+    # common/ = portable DDL; {vendor}/ = the few statements that differ per database
+    locations: classpath:db/migration/common,classpath:db/migration/{vendor}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # Flyway owns the schema; Hibernate only checks it matches
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        timezone.default_storage: NORMALIZE_UTC
+  mvc:
+    problemdetails:
+      enabled: true
+  modulith:
+    events:
+      republish-outstanding-events-on-restart: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+app:
+  catalog:
+    # Catalog starts with a single game. Adding one here is all it takes to make it searchable.
+    seed-games:
+      - name: "RuneScape: Dragonwilds"
+        steam-app-id: 1374490
+  steam:
+    api-key: ${STEAM_API_KEY:}
+    news-count: 20
+  security:
+    jwt:
+      secret: ${JWT_SECRET:}
+      issuer: patch-notes-aggregator
+      ttl: 7d
+    steam:
+      # where the browser reaches this app; Steam sends people back here after login
+      public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
+  fetch:
+    polling-enabled: true
+    poll-interval: PT30M
+    initial-delay: PT30S

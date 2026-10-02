@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+
+app:
+  fetch:
+    polling-enabled: false # tests trigger fetches explicitly; no background timer
+  catalog:
+    sync:
+      enabled: false # a developer's real .env must never make the test suite import the live Steam catalog
+    metadata:
+      enabled: false # ...nor fetch details for it
+      # pacing exists for the real Steam; the tests use a fake one and must not wait
+      min-request-interval: 0ms
+      rate-limit-backoff: 1ms
+      max-rate-limit-backoff: 5ms
+  security:
+    jwt:
+      secret: test-secret-test-secret-test-secret-1234
+  steam:
+    api-key: "" # likewise: tests never use a real key, whatever is in .env
+    retry-delay: 1ms

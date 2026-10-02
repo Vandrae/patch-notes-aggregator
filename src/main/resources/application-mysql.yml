@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    # rewriteBatchedStatements makes the catalog import's JDBC batches real multi-row inserts on MySQL (much faster)
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/patchnotes?rewriteBatchedStatements=true}
+    username: ${MYSQL_USER:patchnotes}
+    password: ${MYSQL_PASSWORD:patchnotes}

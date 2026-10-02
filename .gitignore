@@ -1,0 +1,21 @@
+### Build
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+### Local state & secrets (never commit)
+.env
+data/
+
+### Local tooling
+.claude/
+
+### IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+### Web UI build output and tooling
+web/node/
+web/node_modules/
+web/dist/
