@@ -68,6 +68,17 @@ look up your Steam name and avatar at login (login still works without it, with 
 full-catalog sync. Set `JWT_SECRET` (32+ chars) so sessions survive restarts. MySQL instead of H2: `docker compose up -d`,
 then run with `--spring.profiles.active=mysql`.
 
+**Tests against a real MySQL.** Most tests run on H2 in MySQL compatibility mode, which needs no setup but is not MySQL: it
+accepts some SQL that MySQL rejects and serialises writes that MySQL runs concurrently. `MySqlIntegrationTest` and
+`MySqlFetchStateConcurrencyTest` therefore start a throwaway MySQL 8.4 container with [Testcontainers](https://testcontainers.com)
+and run the production database setup against it: every Flyway migration plus Hibernate's schema check, the catalog import
+(accents, trademark signs, emoji, Japanese), search ranking and the genre / rating / age filters, watching a game through the
+persisted event registry, the feed API, account deletion, and the poller. They need Docker; without it they are **skipped, not
+failed**, so `./mvnw test` still works anywhere. CI always has Docker, runs them on every push, and fails if they were skipped.
+They have already earned their keep: they found that two fetches finishing together, or a fetch and the poller, could
+deadlock on MySQL when creating a game's schedule row (the fetch then failed until the next poll). H2 cannot show that, and
+`MySqlFetchStateConcurrencyTest` reproduces it on purpose (300 racing pairs) so it cannot come back.
+
 **With Docker** (the whole stack, no JDK or Node needed; you only need Docker):
 
 ```bash
@@ -109,7 +120,7 @@ connections only from the app's own origin, images also from Steam's CDN, no inl
 no caching of API responses, and `Strict-Transport-Security` for one year on https requests). The policy was checked in a
 browser against every page (feed, Discover, watchlist, account) with no violations.
 
-**Continuous integration** (`.github/workflows/ci.yml`, on every push): the backend tests on JDK 21, the frontend typecheck, tests
+**Continuous integration** (`.github/workflows/ci.yml`, on every push): the backend tests on JDK 21 (including the real-MySQL tests above), the frontend typecheck, tests
 and build on Node 24, then the Docker image is built and the production compose stack is started against a real MySQL 8.4
 and smoke-tested (health, the web app, a client-side route, the API rejecting anonymous calls, the security headers, the
 `prod` profile being active, and Flyway applying its migrations on MySQL). A failing backend test is shown as an annotation on the run page.
