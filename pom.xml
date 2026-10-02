@@ -19,6 +19,9 @@
     <java.version>21</java.version>
     <spring-modulith.version>2.1.1</spring-modulith.version>
     <jsoup.version>1.23.2</jsoup.version>
+    <node.version>v24.21.0</node.version>
+    <!-- pass -Dskip.frontend=true for a faster Java-only package (the jar then has no web UI) -->
+    <skip.frontend>false</skip.frontend>
   </properties>
 
   <dependencyManagement>
@@ -127,6 +130,65 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <!--
+        Web UI (web/): Maven installs a project-local Node into web/node (nothing is installed system-wide),
+        then runs the frontend tests and build at packaging time, so `./mvnw test` stays Java-only and
+        `./mvnw package` produces one jar that serves the UI. The result is copied into the jar's /static.
+      -->
+      <plugin>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <version>2.0.2</version>
+        <configuration>
+          <workingDirectory>web</workingDirectory>
+          <installDirectory>web</installDirectory>
+          <nodeVersion>${node.version}</nodeVersion>
+          <skip>${skip.frontend}</skip>
+        </configuration>
+        <executions>
+          <execution>
+            <id>install-node-and-npm</id>
+            <phase>prepare-package</phase>
+            <goals><goal>install-node-and-npm</goal></goals>
+          </execution>
+          <execution>
+            <id>npm-ci</id>
+            <phase>prepare-package</phase>
+            <goals><goal>npm</goal></goals>
+            <configuration><arguments>ci</arguments></configuration>
+          </execution>
+          <execution>
+            <id>npm-test</id>
+            <phase>prepare-package</phase>
+            <goals><goal>npm</goal></goals>
+            <configuration><arguments>run test</arguments></configuration>
+          </execution>
+          <execution>
+            <id>npm-build</id>
+            <phase>prepare-package</phase>
+            <goals><goal>npm</goal></goals>
+            <configuration><arguments>run build</arguments></configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-web-ui</id>
+            <phase>prepare-package</phase>
+            <goals><goal>copy-resources</goal></goals>
+            <configuration>
+              <skip>${skip.frontend}</skip>
+              <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+              <resources>
+                <resource><directory>web/dist</directory></resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <!-- Load Mockito as an explicit agent: self-attaching is deprecated on recent JDKs -->
       <plugin>
