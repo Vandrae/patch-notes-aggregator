@@ -104,6 +104,13 @@ jobs:
           echo "web app is served";    curl -fsS $base/ | grep -q 'id="root"'
           echo "client route works";   test "$(status $base/feed)" = 200
           echo "api needs sign-in";    test "$(status $base/api/me)" = 401
+          echo "security headers are sent"
+          headers=$(curl -s -D - -o /dev/null $base/feed)
+          echo "$headers" | grep -qi "^content-security-policy: default-src 'self'"
+          echo "$headers" | grep -qi "^referrer-policy: no-referrer"
+          echo "$headers" | grep -qi "^cross-origin-opener-policy: same-origin"
+          echo "the production profile is active"
+          docker compose -f compose.prod.yaml logs --no-color app | grep -E 'profiles are active: "prod", "mysql"'
           echo "migrations ran on MySQL"
           docker compose -f compose.prod.yaml logs --no-color app | grep -E 'Successfully applied [0-9]+ migrations?'
 

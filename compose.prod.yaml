@@ -39,14 +39,19 @@ services:
       mysql:
         condition: service_healthy   # wait until MySQL answers, not merely until its container exists
     environment:
-      SPRING_PROFILES_ACTIVE: mysql
+      # prod: security and shutdown settings for production (see application-prod.yml); mysql: the database
+      SPRING_PROFILES_ACTIVE: prod,mysql
+      # With nothing in front of the app (as here), do not trust X-Forwarded-* headers from clients. If you put a TLS
+      # reverse proxy in front, set this to "framework" so the app knows requests were https and sends HSTS.
+      FORWARD_HEADERS_STRATEGY: ${FORWARD_HEADERS_STRATEGY:-none}
       MYSQL_URL: jdbc:mysql://mysql:3306/patchnotes?rewriteBatchedStatements=true   # "mysql" = the service name above
       MYSQL_USER: patchnotes
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (32+ characters)}
       STEAM_API_KEY: ${STEAM_API_KEY:-}
-      # where browsers reach the app; Steam sends people back here after login. Use your https URL in production:
-      # an https address also turns on the Secure flag for the session cookie.
+      # where browsers reach the app; Steam sends people back here after login. The prod profile REFUSES to start unless
+      # this is an https address (http://localhost is allowed so you can try this stack on your own machine); https also
+      # turns on the Secure flag for the session cookie.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
     ports:
       - "8080:8080"
