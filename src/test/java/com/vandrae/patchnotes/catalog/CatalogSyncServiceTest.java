@@ -49,7 +49,8 @@ class CatalogSyncServiceTest {
     void cleanSlate() {
         when(steam.isConfigured()).thenReturn(true);
         stateRepository.deleteAll();
-        jdbc.update("DELETE FROM game WHERE steam_app_id >= ?", BASE_ID);
+        // only this test's own range: other tests keep fixtures of their own (some with watchers) at higher ids
+        jdbc.update("DELETE FROM game WHERE steam_app_id BETWEEN ? AND ?", BASE_ID, BASE_ID + 999_999);
     }
 
     private static SteamApp app(long offset, String name, long modified) {
@@ -57,7 +58,7 @@ class CatalogSyncServiceTest {
     }
 
     private Integer fixtureCount() {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM game WHERE steam_app_id >= ?", Integer.class, BASE_ID);
+        return jdbc.queryForObject("SELECT COUNT(*) FROM game WHERE steam_app_id BETWEEN ? AND ?", Integer.class, BASE_ID, BASE_ID + 999_999);
     }
 
     // ------------------------------------------------------------------ first import
