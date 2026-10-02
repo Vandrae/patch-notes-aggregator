@@ -702,7 +702,7 @@ a.row-title:hover {
   border-radius: 4px;
 }
 
-/* ---------- genre + rating filters and badges ---------- */
+/* ---------- genre, rating and age filters, and the tags under each game ---------- */
 .filter-bar {
   margin-bottom: 16px;
 }
@@ -749,13 +749,13 @@ a.row-title:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.badges {
+.tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin: 2px 0 6px;
 }
-.badge {
+.tag {
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--surface-2);
@@ -765,24 +765,37 @@ a.row-title:hover {
   font-weight: 600;
   line-height: 1.5;
 }
-.badge-good {
+.tag-good {
   color: var(--rating-good);
   border-color: color-mix(in srgb, var(--rating-good) 45%, var(--border));
 }
-.badge-mixed {
+.tag-mixed {
   color: var(--rating-mixed);
   border-color: color-mix(in srgb, var(--rating-mixed) 45%, var(--border));
 }
-.badge-bad {
+.tag-bad {
   color: var(--rating-bad);
   border-color: color-mix(in srgb, var(--rating-bad) 45%, var(--border));
 }
-.badge-percent {
+.tag-percent {
   font-weight: 500;
 }
 
-.badge-age {
+.tag-age {
   color: var(--text);
   border-color: var(--muted);
   background: transparent;
+}
+
+/* very narrow screens: rather than squeezing the title between the cover and the Watch button, the button wraps below */
+.row-game > .btn {
+  margin-left: auto;
+}
+@media (max-width: 400px) {
+  .row-game {
+    flex-wrap: wrap;
+  }
+  .row-game .row-main {
+    flex: 1 1 140px;
+  }
 }

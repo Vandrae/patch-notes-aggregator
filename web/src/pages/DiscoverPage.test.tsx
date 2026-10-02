@@ -211,8 +211,8 @@ describe('DiscoverPage', () => {
       const { container } = renderApp(<DiscoverPage />);
 
       await screen.findByText('Elden Ring');
-      await waitFor(() => expect(container.querySelector('.badges')).toHaveTextContent('Action'));
-      const badges = container.querySelector('.badges');
+      await waitFor(() => expect(container.querySelector('.tags')).toHaveTextContent('Action'));
+      const badges = container.querySelector('.tags');
       expect(badges).toHaveTextContent('Overwhelmingly Positive · 96%');
       expect(badges).toHaveTextContent('RPG');
     });

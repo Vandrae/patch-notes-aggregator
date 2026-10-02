@@ -35,9 +35,9 @@ describe('GameBadges', () => {
     expect(await screen.findByText('Massively Multiplayer')).toBeInTheDocument();
     expect(screen.getByText('Action')).toBeInTheDocument();
     const rating = screen.getByText('Very Positive');
-    expect(rating.closest('.badge')).toHaveClass('badge-good');
-    expect(rating.closest('.badge')).toHaveTextContent('Very Positive · 92%');
-    expect(rating.closest('.badge')).toHaveAttribute('title', '92% of user reviews are positive');
+    expect(rating.closest('.tag')).toHaveClass('tag-good');
+    expect(rating.closest('.tag')).toHaveTextContent('Very Positive · 92%');
+    expect(rating.closest('.tag')).toHaveAttribute('title', '92% of user reviews are positive');
   });
 
   it('shows the ESRB age rating by its box wording, and the code itself if the wording is unknown', async () => {
@@ -45,7 +45,7 @@ describe('GameBadges', () => {
     renderApp(<GameBadges game={game({ ageRating: 'MATURE' })} />);
 
     const badge = await screen.findByText('Mature 17+');
-    expect(badge).toHaveClass('badge-age');
+    expect(badge).toHaveClass('tag-age');
     expect(badge).toHaveAttribute('title', 'ESRB age rating');
 
     renderApp(<GameBadges game={game({ ageRating: 'ADULTS_ONLY' })} />);
@@ -61,14 +61,14 @@ describe('GameBadges', () => {
       </>,
     );
 
-    expect(container.querySelector('.badge-mixed')).toHaveTextContent('Mixed');
-    expect(container.querySelector('.badge-bad')).toHaveTextContent('Very Negative');
+    expect(container.querySelector('.tag-mixed')).toHaveTextContent('Mixed');
+    expect(container.querySelector('.tag-bad')).toHaveTextContent('Very Negative');
   });
 
   it('shows nothing for a game with no rating and no genres, and the raw code if a genre name is unknown', async () => {
     stubApi({ 'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS) });
     const { container } = renderApp(<GameBadges game={game({})} />);
-    expect(container.querySelector('.badges')).toBeNull();
+    expect(container.querySelector('.tags')).toBeNull();
 
     renderApp(<GameBadges game={game({ genres: ['SPORTS'] })} />);
     expect(await screen.findByText('SPORTS')).toBeInTheDocument();
