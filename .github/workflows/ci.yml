@@ -35,14 +35,19 @@ jobs:
           import sys
           import xml.etree.ElementTree as ET
 
-          report = 'target/surefire-reports/TEST-com.vandrae.patchnotes.MySqlIntegrationTest.xml'
-          root = ET.parse(report).getroot()
-          tests, skipped, failures, errors = (int(root.get(key)) for key in ('tests', 'skipped', 'failures', 'errors'))
-          print(f'MySqlIntegrationTest: {tests} tests, {skipped} skipped, {failures} failed, {errors} errors')
-          if tests == 0 or skipped > 0:
-              print(f'::error title=MySQL tests did not run::{skipped} of {tests} skipped. Is Docker available on the runner?')
+          classes = ["com.vandrae.patchnotes.MySqlIntegrationTest", "com.vandrae.patchnotes.fetch.internal.MySqlFetchStateConcurrencyTest"]
+          total, problems = 0, []
+          for name in classes:
+              root = ET.parse(f"target/surefire-reports/TEST-{name}.xml").getroot()
+              tests, skipped, failures, errors = (int(root.get(key)) for key in ("tests", "skipped", "failures", "errors"))
+              print(f"{name.rsplit('.', 1)[1]}: {tests} tests, {skipped} skipped, {failures} failed, {errors} errors")
+              total += tests
+              if tests == 0 or skipped > 0:
+                  problems.append(f"{name.rsplit('.', 1)[1]}: {skipped} of {tests} skipped")
+          if problems:
+              print(f"::error title=MySQL tests did not run::{'; '.join(problems)}. Is Docker available on the runner?")
               sys.exit(1)
-          print(f'::notice title=MySQL tests::{tests} tests ran against a real MySQL 8.4 container')
+          print(f"::notice title=MySQL tests::{total} tests ran against a real MySQL 8.4 container")
           PY
       # Surfaces each failing test (name and the start of its message) as an annotation on the run page
       - name: Report failing tests
