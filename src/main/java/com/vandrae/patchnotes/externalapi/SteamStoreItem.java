@@ -13,7 +13,8 @@ import java.util.List;
  * @param reviewScore      Steam's review level, 0 (no reviews) to 9 (Overwhelmingly Positive)
  * @param percentPositive  share of positive reviews (0-100), or null if Steam gave none
  * @param tagIds           the game's top user-assigned store tags, most relevant first; genres are among them
+ * @param ageRating        the age rating code Steam shows (ESRB for the US, e.g. "t", "m"), or null when it shows none
  */
 public record SteamStoreItem(long appId, String shortDescription, String imagePath, String iconPath, int reviewCount,
-                             int reviewScore, Integer percentPositive, List<Long> tagIds) {
+                             int reviewScore, Integer percentPositive, List<Long> tagIds, String ageRating) {
 }

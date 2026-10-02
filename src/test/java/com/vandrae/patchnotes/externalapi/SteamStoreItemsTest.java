@@ -96,7 +96,7 @@ class SteamStoreItemsTest {
     @Test
     void asksForTheStoreTagsSoGenresCanBeDerived() {
         server.expect(requestTo(startsWith(BASE)))
-                .andExpect(request -> assertThat(request.getURI().getQuery()).contains("\"include_tag_count\":30"))
+                .andExpect(request -> assertThat(request.getURI().getQuery()).contains("\"include_tag_count\":30").contains("\"include_ratings\":true"))
                 .andRespond(withSuccess("{\"response\":{}}", MediaType.APPLICATION_JSON));
 
         client.getStoreItems(java.util.List.of(730L));
@@ -128,6 +128,23 @@ class SteamStoreItemsTest {
         assertThat(items.get(50L).tagIds()).isEmpty();
         assertThat(items.get(60L).reviewScore()).as("clamped into Steam's scale").isEqualTo(9);
         assertThat(items.get(60L).percentPositive()).isEqualTo(100);
+    }
+
+    @Test
+    void parsesTheAgeRatingCodeSteamShowsAndLeavesItEmptyWhenThereIsNone() {
+        server.expect(requestTo(startsWith(BASE))).andRespond(withSuccess("""
+                {"response":{"store_items":[
+                  {"id":292030,"success":1,"appid":292030,"game_rating":{"rating":"m","agency":1,"required_age":"17","descriptors":["Blood and Gore"]}},
+                  {"id":105600,"success":1,"appid":105600},
+                  {"id":70,"success":1,"appid":70,"game_rating":{"agency":1}}
+                ]}}
+                """, MediaType.APPLICATION_JSON));
+
+        var items = client.getStoreItems(java.util.List.of(292030L, 105600L, 70L));
+
+        assertThat(items.get(292030L).ageRating()).isEqualTo("m");
+        assertThat(items.get(105600L).ageRating()).as("no rating on the store page").isNull();
+        assertThat(items.get(70L).ageRating()).isNull();
     }
 
     @Test

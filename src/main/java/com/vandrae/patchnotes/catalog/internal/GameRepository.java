@@ -1,5 +1,6 @@
 package com.vandrae.patchnotes.catalog.internal;
 
+import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.Genre;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,11 +20,14 @@ public interface GameRepository extends JpaRepository<Game, Long> {
 
     /**
      * The optional filters shared by every query below. {@code anyGenre = true} means "no genre filter" (an empty
-     * {@code IN} list is not portable, so callers pass a placeholder list then); {@code minRating = 0} means "any rating".
-     * A game matches when it has AT LEAST ONE of the genres and a review level of at least {@code minRating}.
+     * {@code IN} list is not portable, so callers pass a placeholder list then); {@code minRating = 0} means "any rating";
+     * {@code anyAge = true} means "any age rating" (likewise with a placeholder list).
+     * A game matches when it has AT LEAST ONE of the genres, a review level of at least {@code minRating}, and one of the
+     * age ratings.
      */
     String FILTERS = " and g.reviewScore >= :minRating and (:anyGenre = true "
-            + "or exists (select 1 from g.genres ge where ge in :genres))";
+            + "or exists (select 1 from g.genres ge where ge in :genres))"
+            + " and (:anyAge = true or g.ageRating in :ages)";
 
     /**
      * Games whose normalized name matches {@code contains}, best first, ranked by ONE blended score:
@@ -48,19 +52,22 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     Page<Game> search(@Param("exact") String exact, @Param("prefix") String prefix,
                       @Param("contains") String contains,
                       @Param("minRating") int minRating, @Param("anyGenre") boolean anyGenre,
-                      @Param("genres") Collection<Genre> genres, Pageable pageable);
+                      @Param("genres") Collection<Genre> genres,
+                      @Param("anyAge") boolean anyAge, @Param("ages") Collection<AgeRating> ages, Pageable pageable);
 
     /** Browsing without a query: the whole catalog, most popular first. */
     @Query(value = "select g from Game g where true" + FILTERS + " order by g.popularity desc, g.name",
             countQuery = "select count(g) from Game g where true" + FILTERS)
     Page<Game> browse(@Param("minRating") int minRating, @Param("anyGenre") boolean anyGenre,
-                      @Param("genres") Collection<Genre> genres, Pageable pageable);
+                      @Param("genres") Collection<Genre> genres,
+                      @Param("anyAge") boolean anyAge, @Param("ages") Collection<AgeRating> ages, Pageable pageable);
 
     /** Which of {@code ids} pass the filters (used to narrow a user's own watched games). */
     @Query("select g.id from Game g where g.id in :ids" + FILTERS)
     List<Long> matching(@Param("ids") Collection<Long> ids,
                         @Param("minRating") int minRating, @Param("anyGenre") boolean anyGenre,
-                        @Param("genres") Collection<Genre> genres);
+                        @Param("genres") Collection<Genre> genres,
+                        @Param("anyAge") boolean anyAge, @Param("ages") Collection<AgeRating> ages);
 
     boolean existsBySteamAppId(Long steamAppId);
 }

@@ -1,5 +1,6 @@
 package com.vandrae.patchnotes.catalog.internal;
 
+import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.Genre;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,8 @@ public class GameMetadataStore {
 
     /** What was learned about one game. {@code null} description/image means the store has none. */
     public record Details(long steamAppId, String shortDescription, String imagePath, String iconPath, int reviewCount,
-                          int reviewScore, Integer percentPositive, Set<Genre> genres) {
+                          int reviewScore, Integer percentPositive, Set<Genre> genres,
+                          AgeRating ageRating) {
     }
 
     private final JdbcTemplate jdbc;
@@ -64,7 +66,7 @@ public class GameMetadataStore {
         LocalDateTime stamp = utc(now);
         jdbc.batchUpdate(
                 "UPDATE game SET short_description = ?, image_path = ?, icon_path = ?, review_count = ?, "
-                        + "review_score = ?, percent_positive = ?, "
+                        + "review_score = ?, percent_positive = ?, age_rating = ?, "
                         + "popularity = ? + 10 * peak_players, metadata_synced_at = ? WHERE steam_app_id = ?",
                 rows, rows.size(), (ps, row) -> {
                     ps.setString(1, row.shortDescription());
@@ -73,9 +75,10 @@ public class GameMetadataStore {
                     ps.setInt(4, row.reviewCount());
                     ps.setInt(5, row.reviewScore());
                     ps.setObject(6, row.percentPositive(), Types.INTEGER);
-                    ps.setLong(7, row.reviewCount());
-                    ps.setObject(8, stamp);
-                    ps.setLong(9, row.steamAppId());
+                    ps.setString(7, row.ageRating() == null ? null : row.ageRating().name());
+                    ps.setLong(8, row.reviewCount());
+                    ps.setObject(9, stamp);
+                    ps.setLong(10, row.steamAppId());
                 });
         saveGenres(rows);
     }

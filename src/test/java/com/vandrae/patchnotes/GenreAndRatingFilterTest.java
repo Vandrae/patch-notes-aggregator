@@ -31,9 +31,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Genre and rating filters in Discover ({@code /api/games}) and in the feed, on three games with known attributes:
  * <ul>
- *   <li><b>Alpha</b>: Action + RPG, Overwhelmingly Positive (9)</li>
- *   <li><b>Beta</b>: Strategy, Mostly Positive (6)</li>
- *   <li><b>Gamma</b>: no genres and no rating (details not fetched yet, or no reviews)</li>
+ *   <li><b>Alpha</b>: Action + RPG, Overwhelmingly Positive (9), Mature</li>
+ *   <li><b>Beta</b>: Strategy, Mostly Positive (6), Teen</li>
+ *   <li><b>Gamma</b>: no genres, no rating and no age rating (details not fetched yet, or none exists)</li>
  * </ul>
  * Fixture app ids start at 950,000,000.
  */
@@ -62,9 +62,9 @@ class GenreAndRatingFilterTest {
         jdbc.update("DELETE FROM article WHERE game_id IN " + mine, BASE_ID, BASE_ID + 1_000);
         jdbc.update("DELETE FROM watchlist_entry WHERE game_id IN " + mine, BASE_ID, BASE_ID + 1_000);
         jdbc.update("DELETE FROM game WHERE steam_app_id >= ? AND steam_app_id < ?", BASE_ID, BASE_ID + 1_000);
-        alpha = game(1, "Filtertest Alpha", 9, 97, "ACTION", "RPG");
-        beta = game(2, "Filtertest Beta", 6, 74, "STRATEGY");
-        gamma = game(3, "Filtertest Gamma", 0, null);
+        alpha = game(1, "Filtertest Alpha", 9, 97, "MATURE", "ACTION", "RPG");
+        beta = game(2, "Filtertest Beta", 6, 74, "TEEN", "STRATEGY");
+        gamma = game(3, "Filtertest Gamma", 0, null, null);
 
         user = asNewUser("Filter tester");
         for (long id : List.of(alpha, beta, gamma)) {
@@ -79,9 +79,9 @@ class GenreAndRatingFilterTest {
         return jwt().jwt(token -> token.subject(Long.toString(userId)));
     }
 
-    private long game(int n, String name, int score, Integer percent, String... genres) {
-        jdbc.update("INSERT INTO game (name, name_search, steam_app_id, source_type, created_at, review_score, percent_positive) "
-                + "VALUES (?, ?, ?, 'STEAM_NEWS', CURRENT_TIMESTAMP, ?, ?)", name, name.toLowerCase(), BASE_ID + n, score, percent);
+    private long game(int n, String name, int score, Integer percent, String ageRating, String... genres) {
+        jdbc.update("INSERT INTO game (name, name_search, steam_app_id, source_type, created_at, review_score, percent_positive, age_rating) "
+                + "VALUES (?, ?, ?, 'STEAM_NEWS', CURRENT_TIMESTAMP, ?, ?, ?)", name, name.toLowerCase(), BASE_ID + n, score, percent, ageRating);
         Long id = jdbc.queryForObject("SELECT id FROM game WHERE steam_app_id = ?", Long.class, BASE_ID + n);
         for (String genre : genres) {
             jdbc.update("INSERT INTO game_genre (game_id, genre) VALUES (?, ?)", id, genre);
@@ -127,6 +127,43 @@ class GenreAndRatingFilterTest {
     }
 
     @Test
+    void discoverFiltersByAgeRating_anyOfTheChosenOnes_andUnratedGamesNeverPass() throws Exception {
+        mvc.perform(get("/api/games").param("q", "filtertest").param("age", "MATURE").with(user))
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Filtertest Alpha"));
+        mvc.perform(get("/api/games").param("q", "filtertest").param("age", "TEEN", "MATURE").with(user))
+                .andExpect(jsonPath("$.page.totalElements").value(2)); // Gamma has no age rating, so it is never among them
+        mvc.perform(get("/api/games").param("q", "filtertest").param("age", "EVERYONE").with(user))
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+        // combined with the other filters
+        mvc.perform(get("/api/games").param("q", "filtertest").param("age", "TEEN").param("genre", "STRATEGY").param("minRating", "6").with(user))
+                .andExpect(jsonPath("$.page.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Filtertest Beta"));
+        mvc.perform(get("/api/games").param("q", "filtertest").param("age", "TEEN").param("minRating", "9").with(user))
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+    }
+
+    @Test
+    void theFeedCanBeNarrowedByAgeRating() throws Exception {
+        mvc.perform(get("/api/feed").param("age", "TEEN").with(user))
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].gameId").value(beta));
+        mvc.perform(get("/api/feed").param("age", "TEEN,MATURE").with(user))
+                .andExpect(jsonPath("$.totalItems").value(2));
+        mvc.perform(get("/api/feed").param("age", "ADULTS_ONLY").with(user))
+                .andExpect(jsonPath("$.emptyState.reason").value("NO_MATCHING_GAMES"));
+        mvc.perform(get("/api/feed").param("age", "BOGUS").with(user)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void gamesCarryTheirAgeRating() throws Exception {
+        mvc.perform(get("/api/games/{id}", alpha).with(user)).andExpect(jsonPath("$.ageRating").value("MATURE"));
+        mvc.perform(get("/api/games/{id}", gamma).with(user)).andExpect(jsonPath("$.ageRating").doesNotExist());
+        mvc.perform(get("/api/watchlist").with(user))
+                .andExpect(jsonPath("$[?(@.game.name == 'Filtertest Beta')].game.ageRating").value("TEEN"));
+    }
+
+    @Test
     void gamesCarryTheirGenresAndRating() throws Exception {
         mvc.perform(get("/api/games/{id}", alpha).with(user))
                 .andExpect(jsonPath("$.genres.length()").value(2))
@@ -155,7 +192,11 @@ class GenreAndRatingFilterTest {
                 .andExpect(jsonPath("$.ratings.length()").value(4))
                 .andExpect(jsonPath("$.ratings[0].minRating").value(6))
                 .andExpect(jsonPath("$.ratings[0].label").value("Mostly Positive"))
-                .andExpect(jsonPath("$.ratings[3].label").value("Overwhelmingly Positive"));
+                .andExpect(jsonPath("$.ratings[3].label").value("Overwhelmingly Positive"))
+                .andExpect(jsonPath("$.ageRatings.length()").value(5))
+                .andExpect(jsonPath("$.ageRatings[0].code").value("EVERYONE"))
+                .andExpect(jsonPath("$.ageRatings[3].code").value("MATURE"))
+                .andExpect(jsonPath("$.ageRatings[3].label").value("Mature 17+"));
     }
 
     // ---------------------------------------------------------------- feed

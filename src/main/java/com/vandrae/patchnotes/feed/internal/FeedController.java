@@ -1,5 +1,6 @@
 package com.vandrae.patchnotes.feed.internal;
 
+import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.GameFilter;
 import com.vandrae.patchnotes.catalog.Genre;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,14 +22,15 @@ class FeedController {
         this.feed = feed;
     }
 
-    /** Patch notes for the caller's watched games only, newest first; {@code gameId} narrows it to one of them, {@code genre} (repeatable) and {@code minRating} to watched games that match. */
+    /** Patch notes for the caller's watched games only, newest first; {@code gameId} narrows it to one of them, {@code genre} (repeatable), {@code minRating} and {@code age} (repeatable) to watched games that match. */
     @GetMapping
     FeedResponse feed(@AuthenticationPrincipal Jwt jwt,
                       @RequestParam(defaultValue = "0") int page,
                       @RequestParam(defaultValue = "20") int size,
                       @RequestParam(required = false) Long gameId,
                       @RequestParam(required = false) Set<Genre> genre,
-                      @RequestParam(defaultValue = "0") int minRating) {
-        return feed.feedFor(Long.parseLong(jwt.getSubject()), page, size, gameId, new GameFilter(genre, minRating));
+                      @RequestParam(defaultValue = "0") int minRating,
+                      @RequestParam(required = false) Set<AgeRating> age) {
+        return feed.feedFor(Long.parseLong(jwt.getSubject()), page, size, gameId, new GameFilter(genre, minRating, age));
     }
 }

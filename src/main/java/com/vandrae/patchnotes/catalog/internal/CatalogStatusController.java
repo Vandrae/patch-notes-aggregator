@@ -1,5 +1,6 @@
 package com.vandrae.patchnotes.catalog.internal;
 
+import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.CatalogStatus;
 import com.vandrae.patchnotes.catalog.CatalogSyncService;
 import com.vandrae.patchnotes.catalog.Genre;
@@ -37,7 +38,10 @@ class CatalogStatusController {
     public record RatingOption(int minRating, String label) {
     }
 
-    public record Filters(List<GenreOption> genres, List<RatingOption> ratings) {
+    public record AgeRatingOption(AgeRating code, String label) {
+    }
+
+    public record Filters(List<GenreOption> genres, List<RatingOption> ratings, List<AgeRatingOption> ageRatings) {
     }
 
     /** What the genre and rating filters offer, so the UI doesn't hard-code the lists. */
@@ -47,6 +51,7 @@ class CatalogStatusController {
                 Arrays.stream(Genre.values()).map(g -> new GenreOption(g, g.label())).toList(),
                 IntStream.rangeClosed(LOWEST_RATING_OFFERED, Rating.MAX_SCORE)
                         .mapToObj(score -> new RatingOption(score, Rating.label(score)))
-                        .toList());
+                        .toList(),
+                Arrays.stream(AgeRating.values()).map(a -> new AgeRatingOption(a, a.label())).toList());
     }
 }

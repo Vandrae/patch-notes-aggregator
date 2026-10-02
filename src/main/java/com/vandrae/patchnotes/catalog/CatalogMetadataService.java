@@ -183,10 +183,10 @@ public class CatalogMetadataService {
             SteamStoreItem item = items.get(target.steamAppId());
             // no store page: still stamp the game as fetched so it isn't re-requested on every run
             rows.add(item == null
-                    ? new Details(target.steamAppId(), null, null, null, 0, 0, null, Set.of())
+                    ? new Details(target.steamAppId(), null, null, null, 0, 0, null, Set.of(), null)
                     : new Details(target.steamAppId(), cleanDescription(item.shortDescription()), item.imagePath(),
                             item.iconPath(), item.reviewCount(), item.reviewScore(), item.percentPositive(),
-                            genresOf(item.tagIds())));
+                            genresOf(item.tagIds()), AgeRating.fromSteam(item.ageRating()).orElse(null)));
         }
         return rows;
     }

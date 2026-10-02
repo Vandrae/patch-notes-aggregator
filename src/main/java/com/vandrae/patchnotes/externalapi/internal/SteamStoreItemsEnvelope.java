@@ -17,7 +17,12 @@ public record SteamStoreItemsEnvelope(Response response) {
                        @JsonProperty("basic_info") BasicInfo basicInfo,
                        @JsonProperty("tagids") List<Long> tagIds,
                        Reviews reviews,
+                       @JsonProperty("game_rating") GameRating gameRating,
                        Assets assets) {
+    }
+
+    /** The age rating Steam shows for the requested country: a lower-case ESRB code such as "m" for the US. */
+    public record GameRating(String rating) {
     }
 
     public record BasicInfo(@JsonProperty("short_description") String shortDescription) {

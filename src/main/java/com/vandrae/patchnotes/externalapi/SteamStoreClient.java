@@ -121,7 +121,7 @@ public class SteamStoreClient {
         String ids = appIds.stream().map(id -> "{\"appid\":" + id + "}").collect(Collectors.joining(","));
         String input = "{\"ids\":[" + ids + "],\"context\":{\"language\":\"english\",\"country_code\":\"US\",\"steam_realm\":1},"
                 + "\"data_request\":{\"include_assets\":true,\"include_basic_info\":true,\"include_reviews\":true,"
-                + "\"include_tag_count\":" + TAGS_PER_ITEM + "}}";
+                + "\"include_ratings\":true,\"include_tag_count\":" + TAGS_PER_ITEM + "}}";
 
         SteamStoreItemsEnvelope envelope = call("store items", retryWithoutRateLimit, () -> rest.get()
                 .uri(uri -> uri.path("/IStoreBrowseService/GetItems/v1/")
@@ -148,7 +148,8 @@ public class SteamStoreClient {
                     : Math.clamp(summary.percentPositive(), 0, 100);
             result.put(appId, new SteamStoreItem(appId, description, imagePath(item.assets()),
                     iconPath(appId, item.assets()), Math.max(reviews, 0), Math.clamp(score, 0, 9), percent,
-                    item.tagIds() == null ? List.of() : item.tagIds().stream().filter(Objects::nonNull).toList()));
+                    item.tagIds() == null ? List.of() : item.tagIds().stream().filter(Objects::nonNull).toList(),
+                    item.gameRating() == null ? null : item.gameRating().rating()));
         }
         return result;
     }

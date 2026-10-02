@@ -37,6 +37,8 @@ class CatalogScaleTest {
 
     /** Steam tag ids of the ten genres, handed out round-robin so every genre has ~15,000 games. */
     private static final List<Long> GENRE_TAGS = List.of(19L, 21L, 597L, 492L, 128L, 699L, 122L, 599L, 701L, 9L);
+    /** Steam age-rating codes handed out round-robin: a fifth of the games each. */
+    private static final List<String> AGE_CODES = List.of("e", "e10", "t", "m", "ao");
     private static final int PAGE = 50_000;
     private static final int PAGES = 3;
 
@@ -98,7 +100,7 @@ class CatalogScaleTest {
                         "steam/apps/%d/abc/capsule_231x87.jpg?t=1".formatted(id),
                         "%d/%040x.jpg".formatted(id, id), (int) (id % 1000),
                         (int) (id % 10), (int) (id % 10) == 0 ? null : 50 + (int) (id % 10) * 5,
-                        List.of(GENRE_TAGS.get((int) (id % GENRE_TAGS.size())))));
+                        List.of(GENRE_TAGS.get((int) (id % GENRE_TAGS.size()))), AGE_CODES.get((int) (id % AGE_CODES.size()))));
             }
             return answer;
         });
@@ -125,17 +127,22 @@ class CatalogScaleTest {
         assertThat(browse.page().getContent().getFirst().name()).isEqualTo("Synthetic Game %06d".formatted(1_000 + 75_000));
 
         // ---- the same worst cases with genre and rating filters on (each genre has 15,000 games; level 9 is every tenth id)
-        var rpg = timed("browse, genre RPG", () -> catalog.search("", new GameFilter(java.util.Set.of(Genre.RPG), 0), 0, 20));
+        var rpg = timed("browse, genre RPG", () -> catalog.search("", new GameFilter(java.util.Set.of(Genre.RPG), 0, null), 0, 20));
         assertThat(rpg.page().getTotalElements()).isEqualTo(PAGE * PAGES / 10);
         assertThat(rpg.took()).as("browse by genre").isLessThan(Duration.ofSeconds(4));
 
-        var rated = timed("search \"synthetic\", rating 9+", () -> catalog.search("synthetic", new GameFilter(null, 9), 0, 20));
+        var rated = timed("search \"synthetic\", rating 9+", () -> catalog.search("synthetic", new GameFilter(null, 9, null), 0, 20));
         assertThat(rated.page().getTotalElements()).isEqualTo(PAGE * PAGES / 10);
         assertThat(rated.page().getContent()).allSatisfy(g -> assertThat(g.rating().score()).isEqualTo(9));
         assertThat(rated.took()).as("search by rating").isLessThan(Duration.ofSeconds(4));
 
+        var teen = timed("browse, age TEEN or MATURE", () -> catalog.search("",
+                new GameFilter(null, 0, java.util.Set.of(AgeRating.TEEN, AgeRating.MATURE)), 0, 20));
+        assertThat(teen.page().getTotalElements()).isEqualTo(PAGE * PAGES / 5 * 2);
+        assertThat(teen.took()).as("browse by age rating").isLessThan(Duration.ofSeconds(4));
+
         var both = timed("search \"synthetic\", genres RPG+RACING, rating 5+",
-                () -> catalog.search("synthetic", new GameFilter(java.util.Set.of(Genre.RPG, Genre.RACING), 5), 0, 20));
+                () -> catalog.search("synthetic", new GameFilter(java.util.Set.of(Genre.RPG, Genre.RACING), 5, null), 0, 20));
         assertThat(both.page().getTotalElements()).isEqualTo(PAGE * PAGES / 5); // RPG is level 6, RACING level 5: both pass
         assertThat(both.took()).as("search by genre and rating").isLessThan(Duration.ofSeconds(4));
     }

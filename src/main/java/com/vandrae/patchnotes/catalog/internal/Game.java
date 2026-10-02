@@ -1,6 +1,7 @@
 package com.vandrae.patchnotes.catalog.internal;
 
 import com.vandrae.patchnotes.catalog.SourceType;
+import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.Genre;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -69,6 +70,11 @@ public class Game {
     @Column(name = "percent_positive", insertable = false, updatable = false)
     private Integer percentPositive;
 
+    /** ESRB age rating, or null when Steam shows none. Written by the metadata job, never by JPA. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "age_rating", insertable = false, updatable = false)
+    private AgeRating ageRating;
+
     /** Read-only view: the metadata job writes game_genre with plain JDBC. Batched so a page of results is one query. */
     @ElementCollection
     @CollectionTable(name = "game_genre", joinColumns = @JoinColumn(name = "game_id"))
@@ -132,6 +138,10 @@ public class Game {
 
     public Integer getPercentPositive() {
         return percentPositive;
+    }
+
+    public AgeRating getAgeRating() {
+        return ageRating;
     }
 
     public Set<Genre> getGenres() {

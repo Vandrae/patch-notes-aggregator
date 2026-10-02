@@ -50,7 +50,7 @@ public class CatalogService {
         var f = Criteria.of(filter);
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE)); // ordering is in the queries
         if (query == null || query.isBlank()) {
-            return games.browse(f.minRating, f.anyGenre, f.genres, pageable).map(this::toSummary);
+            return games.browse(f.minRating, f.anyGenre, f.genres, f.anyAge, f.ages, pageable).map(this::toSummary);
         }
         String normalized = NameSearch.normalize(query);
         if (normalized.isEmpty()) {
@@ -59,7 +59,7 @@ public class CatalogService {
         }
         String prefix = normalized + "%";
         String contains = normalized.length() >= MIN_CONTAINS_LENGTH ? "%" + normalized + "%" : prefix;
-        return games.search(normalized, prefix, contains, f.minRating, f.anyGenre, f.genres, pageable).map(this::toSummary);
+        return games.search(normalized, prefix, contains, f.minRating, f.anyGenre, f.genres, f.anyAge, f.ages, pageable).map(this::toSummary);
     }
 
     /** The subset of {@code ids} that passes the filter, in no particular order. */
@@ -71,7 +71,7 @@ public class CatalogService {
             return List.copyOf(ids);
         }
         var f = Criteria.of(filter);
-        return games.matching(ids, f.minRating, f.anyGenre, f.genres);
+        return games.matching(ids, f.minRating, f.anyGenre, f.genres, f.anyAge, f.ages);
     }
 
     public Optional<GameSummary> findById(long id) {
@@ -89,10 +89,13 @@ public class CatalogService {
     }
 
     /** A filter in the form the queries take: an empty genre list is not portable in JPQL, so a placeholder stands in. */
-    private record Criteria(int minRating, boolean anyGenre, Collection<Genre> genres) {
+    private record Criteria(int minRating, boolean anyGenre, Collection<Genre> genres,
+                            boolean anyAge, Collection<AgeRating> ages) {
         static Criteria of(GameFilter filter) {
-            boolean any = filter.genres().isEmpty();
-            return new Criteria(filter.minRating(), any, any ? List.of(Genre.ACTION) : filter.genres());
+            boolean anyGenre = filter.genres().isEmpty();
+            boolean anyAge = filter.ageRatings().isEmpty();
+            return new Criteria(filter.minRating(), anyGenre, anyGenre ? List.of(Genre.ACTION) : filter.genres(),
+                    anyAge, anyAge ? List.of(AgeRating.EVERYONE) : filter.ageRatings());
         }
     }
 
@@ -102,6 +105,6 @@ public class CatalogService {
         return new GameSummary(game.getId(), game.getName(), game.getSourceType(), game.getSteamAppId(),
                 game.getShortDescription(), imageUrl, iconUrl,
                 game.getGenres().stream().sorted().toList(),
-                Rating.of(game.getReviewScore(), game.getPercentPositive()));
+                Rating.of(game.getReviewScore(), game.getPercentPositive()), game.getAgeRating());
     }
 }

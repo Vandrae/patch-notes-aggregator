@@ -8,8 +8,9 @@ import java.util.List;
  * @param iconUrl          full https URL of the game's small square icon on Steam's CDN, or null if there is none
  * @param genres           the game's standard Steam genres (empty until details have been fetched)
  * @param rating           the user-review rating, or null for a game without reviews (or before details are fetched)
+ * @param ageRating        the ESRB age rating, or null when Steam shows none (many games have none)
  */
 public record GameSummary(long id, String name, SourceType sourceType, Long steamAppId,
                           String shortDescription, String imageUrl, String iconUrl,
-                          List<Genre> genres, Rating rating) {
+                          List<Genre> genres, Rating rating, AgeRating ageRating) {
 }

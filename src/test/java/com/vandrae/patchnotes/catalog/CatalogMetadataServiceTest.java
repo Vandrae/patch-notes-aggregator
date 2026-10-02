@@ -65,10 +65,10 @@ class CatalogMetadataServiceTest {
     private static Map<Long, SteamStoreItem> storeAnswer(Collection<Long> ids) {
         Map<Long, SteamStoreItem> answer = new HashMap<>();
         if (ids.contains(POPULAR_NO_REVIEWS)) {
-            answer.put(POPULAR_NO_REVIEWS, new SteamStoreItem(POPULAR_NO_REVIEWS, "Early development.", "steam/apps/1/a/capsule_231x87.jpg?t=1", POPULAR_NO_REVIEWS + "/" + "a".repeat(40) + ".jpg", 0, 0, null, List.of(9L)));
+            answer.put(POPULAR_NO_REVIEWS, new SteamStoreItem(POPULAR_NO_REVIEWS, "Early development.", "steam/apps/1/a/capsule_231x87.jpg?t=1", POPULAR_NO_REVIEWS + "/" + "a".repeat(40) + ".jpg", 0, 0, null, List.of(9L), null));
         }
         if (ids.contains(REVIEWED)) {
-            answer.put(REVIEWED, new SteamStoreItem(REVIEWED, "<b>Gather</b> &amp; build.  <br>In a   big world.", "steam/apps/2/b/capsule_231x87.jpg?t=2", null, 500, 8, 91, List.of(19L, 122L, 3859L)));
+            answer.put(REVIEWED, new SteamStoreItem(REVIEWED, "<b>Gather</b> &amp; build.  <br>In a   big world.", "steam/apps/2/b/capsule_231x87.jpg?t=2", null, 500, 8, 91, List.of(19L, 122L, 3859L), "t"));
         }
         return answer; // NO_STORE_PAGE is deliberately absent
     }
@@ -116,11 +116,27 @@ class CatalogMetadataServiceTest {
     }
 
     @Test
+    void storesTheAgeRatingAndLeavesGamesWithoutOneEmpty() {
+        metadata.tryEnrich();
+
+        assertThat(jdbc.queryForObject("SELECT age_rating FROM game WHERE steam_app_id = ?", String.class, REVIEWED)).isEqualTo("TEEN");
+        assertThat(jdbc.queryForObject("SELECT age_rating FROM game WHERE steam_app_id = ?", String.class, POPULAR_NO_REVIEWS)).isNull();
+        assertThat(jdbc.queryForObject("SELECT age_rating FROM game WHERE steam_app_id = ?", String.class, NO_STORE_PAGE)).isNull();
+
+        // Steam later shows a different rating: the stored one is replaced, not kept
+        jdbc.update("UPDATE game SET metadata_synced_at = NULL WHERE steam_app_id = ?", REVIEWED);
+        when(steam.getStoreItems(anyCollection())).thenReturn(Map.of(REVIEWED,
+                new SteamStoreItem(REVIEWED, "x", null, null, 10, 6, 72, List.of(), "ao")));
+        metadata.tryEnrich();
+        assertThat(jdbc.queryForObject("SELECT age_rating FROM game WHERE steam_app_id = ?", String.class, REVIEWED)).isEqualTo("ADULTS_ONLY");
+    }
+
+    @Test
     void aRefreshReplacesGenresInsteadOfAccumulatingThem() {
         metadata.tryEnrich();
         jdbc.update("UPDATE game SET metadata_synced_at = NULL WHERE steam_app_id = ?", REVIEWED);
         when(steam.getStoreItems(anyCollection())).thenReturn(Map.of(REVIEWED,
-                new SteamStoreItem(REVIEWED, "x", null, null, 10, 6, 72, List.of(122L, 701L))));
+                new SteamStoreItem(REVIEWED, "x", null, null, 10, 6, 72, List.of(122L, 701L), "m")));
 
         metadata.tryEnrich();
 

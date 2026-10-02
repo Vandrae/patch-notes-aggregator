@@ -1,6 +1,7 @@
 package com.vandrae.patchnotes.catalog.internal;
 
 import com.vandrae.patchnotes.catalog.CatalogService;
+import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.GameFilter;
 import com.vandrae.patchnotes.catalog.GameSummary;
 import com.vandrae.patchnotes.catalog.Genre;
@@ -29,9 +30,10 @@ class GameController {
     PagedModel<GameSummary> search(@RequestParam(required = false) String q,
                                    @RequestParam(required = false) Set<Genre> genre,
                                    @RequestParam(defaultValue = "0") int minRating,
+                                   @RequestParam(required = false) Set<AgeRating> age,
                                    @RequestParam(defaultValue = "0") int page,
                                    @RequestParam(defaultValue = "20") int size) {
-        return new PagedModel<>(catalog.search(q, new GameFilter(genre, minRating), page, size));
+        return new PagedModel<>(catalog.search(q, new GameFilter(genre, minRating, age), page, size));
     }
 
     @GetMapping("/{id}")
