@@ -1,12 +1,141 @@
-# Game Patch Notes Aggregator — Design Doc
-
-## Overview
+# Game Patch Notes Aggregator
 
 A Spring Boot REST API that lets a user search a large catalog of games, build a
 personal watchlist, and get a news-feed-style view of recent patch notes for
 just the games they care about. Built to demonstrate skills a lot of junior
 Java portfolios skip: scheduled background jobs, third-party API integration,
 data normalization across inconsistent sources, and proper auth.
+
+**Status:** work in progress toward a production app. Done so far: **Steam-only sign-in**, the **full Steam catalog**
+(~190,000 games, imported automatically and kept current), search, watchlist, scheduled + on-demand patch-note fetching, a
+normalized feed, and a **React web UI** served by the same jar. Next: adaptive polling for large numbers of watchers,
+cover art, and non-Steam games.
+
+**The catalog:** on first start (or whenever it holds fewer than 1,000 games) the app imports every game from Steam's
+`IStoreService/GetAppList` in the background, about 15 seconds for the whole list, then refreshes nightly with only what
+changed. This needs `STEAM_API_KEY`; without one, only the starter game (Dragonwilds) is searchable and Discover says so.
+Search ignores case, accents, punctuation and trademark symbols ("half life 2" finds *Half-Life 2: Episode One™*). Results
+are ranked by one blended score, `relevance bonus + log10(1 + popularity)`, where the bonus is 3.0 for the exact name, 1.5 for a
+name starting with your text and 0 for one that merely contains it. Popularity is on a log scale, so an exact match beats a
+prefix match of similar popularity ("Portal" before "Portal 2"), but a game about 100x more popular can overtake an exact
+match: searching "war" puts WARDOGS, War Thunder and Warframe above an obscure game that happens to be called "WAR!". With
+no query, Discover lists the whole catalog most popular first. Each result shows Steam's cover
+image, a short description, and a "View on Steam" link with the Steam logo. Steam has many different games with the same name
+(three are called "Deadlock"), so popularity and that link are how you tell them apart.
+
+**Covers, icons, descriptions and popularity** come from Steam's store API (`IStoreBrowseService/GetItems`, 200 games per request) in
+a second background job that runs after the catalog import. Popularity is `reviews + 10 × peak players on Steam's most-played
+chart`: reviews cover almost every game, and the chart covers hugely played games that have few or no reviews yet (Valve's
+Deadlock has none). It is a ranking heuristic, not a statistic. Steam throttles that endpoint hard (measured: about one request
+per 3 seconds, after which it answers HTTP 429), so the job is **one paced worker** that waits and retries the *same* batch when
+throttled, and fetches the most useful games first (the most-played chart, then recently updated games). The first run over the
+whole catalog therefore takes about **50 minutes** in the background; search works throughout and improves as it goes (Discover
+shows progress). After that only new, changed or stale (30 days) games are refreshed.
+
+## Quick start
+
+Needs **JDK 21+** (check that `JAVA_HOME` points at one; the wrapper uses it). No database setup: it uses a
+file-backed H2 in `./data` by default.
+
+```bash
+./mvnw test                   # backend tests (Java only): module rules, Steam login security, catalog sync, details
+                              # pacing + rate limiting, search ranking (incl. a 150,000-game scale test), normalizer, HTTP flow
+./mvnw package                # tests + builds the web UI + one jar that serves both (first run downloads a local Node)
+java -jar target/patch-notes-aggregator-0.1.0-SNAPSHOT.jar      # then open http://localhost:8080
+```
+
+`./mvnw package` installs a project-local Node into `web/node/` (nothing system-wide), runs the frontend tests and
+builds the UI into the jar. Use `-Dskip.frontend=true` for a faster Java-only build.
+
+**Working on the UI:** run the backend, then in `web/` run `npm run dev` (needs Node on your PATH, or use `web/node/`).
+The dev server on <http://localhost:5173> proxies `/api` to the backend; start the backend with
+`PUBLIC_BASE_URL=http://localhost:5173` so Steam sends you back through the proxy.
+
+Secrets go in a git-ignored `.env` (copy `.env.example`). The Steam news endpoint is keyless; `STEAM_API_KEY` is used to
+look up your Steam name and avatar at login (login still works without it, with a generic name) and, shortly, for the
+full-catalog sync. Set `JWT_SECRET` (32+ chars) so sessions survive restarts. MySQL instead of H2: `docker compose up -d`,
+then run with `--spring.profiles.active=mysql`.
+
+**Signing in:** there are no passwords. Open <http://localhost:8080>, click **Sign in through Steam**, sign in on Steam's own
+page, and you are sent back signed in (an HttpOnly session cookie). The app has a feed (with a per-game filter), game
+discovery with search and a one-click Watch (each patch note shows its game's Steam icon, falling back to an initials tile until the icon has been fetched), a watchlist, and an account page (sign out / delete account).
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/api/auth/steam/login?next=/path` | public; redirects to Steam. `next` must be a same-site path |
+| GET | `/api/auth/steam/callback` | public; Steam returns here; verifies, creates/updates the user, sets the session cookie |
+| POST | `/api/auth/logout` | clears the session cookie |
+| GET / DELETE | `/api/me` | who am I (401 = signed out) / delete my account and watchlist |
+| GET | `/api/games?q=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive) |
+| GET | `/api/watchlist` | caller's watchlist |
+| PUT / DELETE | `/api/watchlist/{gameId}` | idempotent add (201 new / 204 already) and remove |
+| GET | `/api/feed?page=&size=&gameId=` | patch notes for watched games, newest first; `gameId` narrows to one watched game; `emptyState` explains an empty page |
+
+Everything except the `/api/auth/steam/**` routes, logout and `/actuator/health` requires a session. The browser session
+is an HttpOnly cookie, so writes from the browser must echo the `XSRF-TOKEN` cookie in an `X-XSRF-TOKEN` header (CSRF
+protection). Scripts can instead send `Authorization: Bearer <jwt>`, which needs no CSRF header. User-scoped routes take
+the user from the verified token's subject, never from the URL. Steam only reveals a SteamID (no email), which is all we store
+besides your display name and avatar.
+
+## Modular monolith
+
+One deployable, eight modules. Each is a top-level package whose root holds its public API and whose
+`internal` sub-package is off limits to other modules. The allowed dependencies are declared in each module's
+`package-info.java` and **enforced by a test** ([ModularityTests](src/test/java/com/vandrae/patchnotes/ModularityTests.java),
+Spring Modulith), so a stray import across a boundary fails the build.
+
+```mermaid
+graph LR
+  security --> users
+  users --> catalog
+  users -. GameWatched .-> events
+  feed --> users
+  feed --> catalog
+  fetch --> externalapi[external api]
+  fetch --> catalog
+  fetch --> users
+  fetch --> feed
+  events -. GameWatched .-> fetch
+```
+
+| Module | Responsibility |
+|---|---|
+| `users` | accounts + watchlist ("User Watch"); no auth logic |
+| `security` | "Sign in through Steam" (OpenID 2.0), HS256 JWT session cookie, CSRF, HTTP security rules |
+| `catalog` | game catalog + search; seeded from `app.catalog.seed-games` |
+| `externalapi` | Steam client with timeouts and retry/backoff; returns Steam's own DTOs |
+| `fetch` | scheduled poller, on-demand fetch, `ArticleSource` adapters, normalizer |
+| `feed` | article storage (upsert + dedup) and the per-user feed endpoint |
+| `events` | shared event contracts (`GameWatched`, `ArticlesIngested`) |
+| `web` | serves the React app (built from `web/`) at its client-side routes |
+
+The three flows from the design diagram map to code like this:
+
+- **Flagging a game:** `PUT /api/watchlist/{id}` → JWT check → catalog existence check → save → publish `GameWatched`.
+- **Finding patches:** `GameWatched` (immediately) or the 30-minute scheduled poll → fetch → Steam API → normalize → feed (upsert) → publish `ArticlesIngested`.
+- **User opens app:** JWT check → feed query scoped to the caller's watchlist.
+
+`GameWatched` is delivered through Modulith's persisted event registry, so an unprocessed event survives a crash
+and is re-published on restart. Nothing consumes `ArticlesIngested` yet; it is the hook for notifications.
+
+### What the Steam data actually looks like
+
+Checked against the live API for Dragonwilds, and the normalizer's tests use these real titles:
+
+- The feed mixes developer posts (`feed_type=1`) with press and SteamDB links (`feed_type=0`); only the former can be patch notes.
+- The `patchnotes` tag is only set on *some* real patches ("1.0.0.5 Patch Notes" lacks it), and the other tags are moderation noise.
+- Many real patches never say "patch": "0.12.0.4 is live!". Meanwhile "An Update From Mod Dutch", "Update Survey" and
+  "0.12.1 Preview" say "update" or carry a version number but aren't patches.
+
+So classification is: developer tag → trusted; otherwise first-party only, then title heuristics (patch/hotfix/changelog,
+`Update N`, or a 3+ part version number) minus survey/preview/roadmap. Bodies are BBCode (`[list][*][p]…`) and are
+flattened to a ≤280-char plain-text summary; a SHA-256 of the full body detects silent edits and updates the row in place.
+
+---
+
+# Design Doc
+
+## Overview
 
 ## Problem being solved
 
@@ -143,6 +272,9 @@ patch notes, but good practice — and a reasonable thing to mention if asked
 in an interview.
 
 ## Build order
+
+> **Progress:** steps 1–6 are done for the Steam path (with Dragonwilds as the only game). Step 7, custom adapters,
+> is next: implement `ArticleSource` for the new game and add it to the catalog; nothing else changes.
 
 1. Prove one data path end-to-end — pull Steam News API data for a single
    hardcoded game, parsed into plain `Article` objects. No Spring yet.
