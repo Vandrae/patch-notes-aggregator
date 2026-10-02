@@ -1,0 +1,116 @@
+name: CI
+
+# Runs on every push (any branch) and can be started by hand from the Actions tab.
+on:
+  push:
+  workflow_dispatch:
+
+# A newer push to the same branch makes an older, still-running check pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests (Java 21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      # -Dskip.frontend=true: this job is Java only; the web app has its own job below
+      - name: Run the backend tests
+        run: ./mvnw -B -ntp -Dskip.frontend=true verify
+      # Surfaces each failing test (name and the start of its message) as an annotation on the run page
+      - name: Report failing tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          def message(text):
+              return text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+
+          def title(text):
+              return message(text).replace(',', '%2C').replace(':', '%3A')
+
+          for path in sorted(glob.glob('target/surefire-reports/TEST-*.xml')):
+              for case in ET.parse(path).getroot().iter('testcase'):
+                  for kind in ('failure', 'error'):
+                      node = case.find(kind)
+                      if node is not None:
+                          detail = (node.get('message') or '') + '\n' + (node.text or '')[:1500]
+                          print(f"::error title={title(case.get('classname') + '.' + case.get('name'))}::{message(detail)}")
+          PY
+
+  frontend:
+    name: Frontend typecheck, tests and build (Node 24)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    name: Docker image and full-stack smoke test (app + MySQL)
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    env:
+      # throwaway values that exist only for this run
+      MYSQL_PASSWORD: ci-mysql-password
+      MYSQL_ROOT_PASSWORD: ci-mysql-root-password
+      JWT_SECRET: ci-only-signing-secret-ci-only-signing-secret
+      APP_IMAGE: patch-notes-aggregator:ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true            # keep the image on this runner so compose can start it
+          tags: ${{ env.APP_IMAGE }}
+          cache-from: type=gha  # reuse layers from earlier runs
+          cache-to: type=gha,mode=max
+
+      - name: Start the stack (app + MySQL) and wait until both are healthy
+        run: docker compose -f compose.prod.yaml up -d --no-build --wait --wait-timeout 300
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          base=http://localhost:8080
+          status() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
+
+          echo "health";               curl -fsS $base/actuator/health; echo
+          echo "web app is served";    curl -fsS $base/ | grep -q 'id="root"'
+          echo "client route works";   test "$(status $base/feed)" = 200
+          echo "api needs sign-in";    test "$(status $base/api/me)" = 401
+          echo "migrations ran on MySQL"
+          docker compose -f compose.prod.yaml logs --no-color app | grep -E 'Successfully applied [0-9]+ migrations?'
+
+      - name: Show the logs if something failed
+        if: failure()
+        run: docker compose -f compose.prod.yaml logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f compose.prod.yaml down -v
