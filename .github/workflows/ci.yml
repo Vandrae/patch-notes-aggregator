@@ -27,6 +27,23 @@ jobs:
       # -Dskip.frontend=true: this job is Java only; the web app has its own job below
       - name: Run the backend tests
         run: ./mvnw -B -ntp -Dskip.frontend=true verify
+      # The MySQL tests skip themselves when Docker is missing, and a skipped test looks like a pass. Here Docker is
+      # expected, so a skip means something is wrong: fail unless they really ran.
+      - name: Check that the MySQL tests ran against a real MySQL
+        run: |
+          python3 - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          report = 'target/surefire-reports/TEST-com.vandrae.patchnotes.MySqlIntegrationTest.xml'
+          root = ET.parse(report).getroot()
+          tests, skipped, failures, errors = (int(root.get(key)) for key in ('tests', 'skipped', 'failures', 'errors'))
+          print(f'MySqlIntegrationTest: {tests} tests, {skipped} skipped, {failures} failed, {errors} errors')
+          if tests == 0 or skipped > 0:
+              print(f'::error title=MySQL tests did not run::{skipped} of {tests} skipped. Is Docker available on the runner?')
+              sys.exit(1)
+          print(f'::notice title=MySQL tests::{tests} tests ran against a real MySQL 8.4 container')
+          PY
       # Surfaces each failing test (name and the start of its message) as an annotation on the run page
       - name: Report failing tests
         if: failure()
