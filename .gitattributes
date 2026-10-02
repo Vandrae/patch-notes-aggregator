@@ -1,0 +1,6 @@
+# Files that run inside Linux containers and CI must keep Unix line endings even when checked out on Windows
+# (a "\r" at the end of the #! line makes the shell look for an interpreter called "sh\r").
+mvnw        text eol=lf
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.cmd       text eol=crlf
