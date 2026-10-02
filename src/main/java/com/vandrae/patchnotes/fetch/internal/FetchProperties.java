@@ -18,7 +18,7 @@ public record FetchProperties(
         @DefaultValue("true") boolean pollingEnabled,
         @DefaultValue("30s") Duration tick,
         @DefaultValue("30s") Duration initialDelay,
-        @DefaultValue("100") int batchSize,
+        @DefaultValue("250") int batchSize,
         @DefaultValue Schedule schedule,
         @DefaultValue Pacing pacing) {
 

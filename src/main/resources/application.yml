@@ -51,6 +51,19 @@ app:
       # where the browser reaches this app; Steam sends people back here after login
       public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
   fetch:
+    # Adaptive polling: a tick looks for watched games whose time has come; each game's next time follows how recently it
+    # published a patch note (see PollSchedule). Durations here are ISO-8601 because the tick is read by @Scheduled.
     polling-enabled: true
-    poll-interval: PT30M
+    tick: PT30S
     initial-delay: PT30S
+    batch-size: 250          # most games handled per tick
+    schedule:
+      min-interval: PT15M    # right after a patch
+      max-interval: PT24H    # no watched game goes unchecked for longer than this
+      age-divisor: 4         # wait = time since the newest patch note / this, between the two limits
+      jitter: 0.1            # waits are shortened by up to this fraction so games do not all fall due together
+      failure-backoff: PT5M  # first wait after a failed poll, doubling
+      max-failure-backoff: PT6H
+    pacing:
+      requests-per-second: 5 # measured: Steam's news API did not throttle 100 uncached requests at ~4 per second
+      rate-limit-pause: PT30S

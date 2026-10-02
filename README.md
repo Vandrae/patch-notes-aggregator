@@ -7,9 +7,9 @@ Java portfolios skip: scheduled background jobs, third-party API integration,
 data normalization across inconsistent sources, and proper auth.
 
 **Status:** work in progress toward a production app. Done so far: **Steam-only sign-in**, the **full Steam catalog**
-(~190,000 games, imported automatically and kept current), search, watchlist, scheduled + on-demand patch-note fetching, a
-normalized feed, and a **React web UI** served by the same jar. Next: adaptive polling for large numbers of watchers,
-cover art, and non-Steam games.
+(~190,000 games, imported automatically and kept current), search with genre / rating / age filters, watchlist,
+**adaptive** + on-demand patch-note fetching, a normalized feed, and a **React web UI** served by the same jar. Next:
+non-Steam games and production packaging (Docker, CI).
 
 **The catalog:** on first start (or whenever it holds fewer than 1,000 games) the app imports every game from Steam's
 `IStoreService/GetAppList` in the background, about 15 seconds for the whole list, then refreshes nightly with only what
@@ -128,11 +128,38 @@ The diagram predates the `web` module, which only serves the React app.*
 The three flows from the design diagram map to code like this:
 
 - **Flagging a game:** `PUT /api/watchlist/{id}` → JWT check → catalog existence check → save → publish `GameWatched`.
-- **Finding patches:** `GameWatched` (immediately) or the 30-minute scheduled poll → fetch → Steam API → normalize → feed (upsert) → publish `ArticlesIngested`.
+- **Finding patches:** `GameWatched` (immediately) or the adaptive scheduled poll (below) → fetch → Steam API → normalize → feed (upsert) → publish `ArticlesIngested`.
 - **User opens app:** JWT check → feed query scoped to the caller's watchlist.
 
 `GameWatched` is delivered through Modulith's persisted event registry, so an unprocessed event survives a crash
 and is re-published on restart. Nothing consumes `ArticlesIngested` yet; it is the hook for notifications.
+
+### Adaptive polling
+
+Asking Steam about every watched game every 30 minutes costs 48 calls a day per game whether it patches daily or yearly,
+which does not scale (5,000 watched games would be ~240,000 calls a day). Instead each watched game has its own schedule
+in `game_fetch_state`, and the poller wakes every 30 seconds to take whichever games are due.
+
+- **When to look again** (`PollSchedule`, pure arithmetic): after a successful poll, the wait is the time since the game's
+  newest patch note divided by 4, kept between 15 minutes and 24 hours. A game patched an hour ago is checked within the
+  hour; one patched last week, daily; a game with no patch notes (or no news feed) daily. A new patch note snaps a quiet game
+  back to frequent checks by itself, with no counters to keep. Waits are shortened by up to 10% at random so games do not all
+  fall due together; because jitter only shortens, **no watched game goes unchecked for more than 24 hours**.
+- **Failures** back off on their own schedule (5 minutes, doubling, up to 6 hours) and never delay other games.
+- **Pacing:** requests leave at a steady 5 per second (measured: Steam's news API did not throttle 100 uncached requests at
+  about 4 per second). If Steam answers HTTP 429 the poller slows down, stands down for 30 seconds and leaves the rest due.
+  Retrying a 429 immediately would only count against the limit, so the news client reports it instead of retrying.
+- **On demand:** starting to watch a game still fetches it at once, and that fetch sets the game's schedule too, so it is not
+  polled again straight away. Games nobody watches lose their schedule row and are never polled.
+- **Metrics** (Micrometer; not exposed over HTTP yet): `patchnotes.fetch.polls` by outcome, `patchnotes.fetch.articles`,
+  `patchnotes.fetch.tracked`, `patchnotes.fetch.due` and `patchnotes.fetch.lag.seconds` (how long the most overdue game has
+  waited; a number that keeps growing means the poller cannot keep up).
+- **Tuning** is under `app.fetch` in `application.yml`. The 24-hour cap comes from one method, `PollSchedule.maxIntervalFor`,
+  which is where a slower tier (say weekly checks for games with no patch note in a year) will plug in.
+
+With the illustrative mix of 5% busy, 25% moderate and 70% quiet games, 5,000 watched games come to roughly 22,000 calls a day
+instead of 240,000 (an estimate, not a measurement). One instance only: the overlap guard is in-memory, so several instances
+would need a lease on the state rows.
 
 ### What the Steam data actually looks like
 
@@ -211,8 +238,9 @@ came from.
 
 **1. Only poll what's being watched.**
 The scheduled job queries `SELECT DISTINCT game_id FROM watchlist` fresh at
-the start of every cycle — not a list held in memory — so it's always
-correct even as users add/remove games between cycles. Polling the full
+the start of every tick — not a list held in memory — and reconciles its per-game
+schedule rows with it, so it's always correct even as users add/remove games
+between ticks. Polling the full
 150k-game catalog on a schedule would be wasteful and would get rate-limited
 fast.
 
