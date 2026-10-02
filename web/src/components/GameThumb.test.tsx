@@ -12,6 +12,8 @@ const game: Game = {
   shortDescription: 'A multiplayer game in early development.',
   imageUrl: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1422450/abc/capsule_231x87.jpg?t=1',
   iconUrl: null,
+  genres: [],
+  rating: null,
 };
 
 describe('GameThumb', () => {

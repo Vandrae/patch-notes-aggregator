@@ -1,12 +1,14 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
-import type { CatalogStatus, FeedPage, Game, GamesPage, User, WatchlistItem } from './types';
+import { filterQuery, type Filters, NO_FILTERS } from './filters';
+import type { CatalogStatus, FeedPage, FilterOptions, Game, GamesPage, User, WatchlistItem } from './types';
 
 export const keys = {
   me: ['me'] as const,
   watchlist: ['watchlist'] as const,
-  feed: (gameId?: number) => ['feed', gameId ?? 'all'] as const,
-  games: (q: string) => ['games', q] as const,
+  feed: (gameId: number | undefined, filters: Filters) => ['feed', gameId ?? 'all', filters] as const,
+  games: (q: string, filters: Filters) => ['games', q, filters] as const,
+  filterOptions: ['filter-options'] as const,
   catalogStatus: ['catalog-status'] as const,
 };
 
@@ -28,12 +30,12 @@ export function useWatchlist() {
 const EMPTY_FEED_POLL_MS = 4000;
 const EMPTY_FEED_MAX_POLLS = 8;
 
-export function useFeed(gameId?: number) {
+export function useFeed(gameId?: number, filters: Filters = NO_FILTERS) {
   return useInfiniteQuery({
-    queryKey: keys.feed(gameId),
+    queryKey: keys.feed(gameId, filters),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
-      api.get<FeedPage>(`/api/feed?size=10&page=${pageParam}${gameId ? `&gameId=${gameId}` : ''}`),
+      api.get<FeedPage>(`/api/feed?size=10&page=${pageParam}${gameId ? `&gameId=${gameId}` : ''}${filterQuery(filters)}`),
     getNextPageParam: (last) => (last.page + 1 < last.totalPages ? last.page + 1 : undefined),
     refetchInterval: (query) => {
       const waiting = query.state.data?.pages[0]?.emptyState?.reason === 'NO_ARTICLES_YET';
@@ -55,13 +57,22 @@ export function useCatalogStatus() {
   });
 }
 
+/** The genres and ratings the filters offer: fixed lists, so fetched once and kept. */
+export function useFilterOptions() {
+  return useQuery({
+    queryKey: keys.filterOptions,
+    queryFn: () => api.get<FilterOptions>('/api/catalog/filters'),
+    staleTime: Infinity,
+  });
+}
+
 /** @param refreshWhileImporting re-run the search periodically so results appear as the import progresses */
-export function useGames(q: string, refreshWhileImporting = false) {
+export function useGames(q: string, filters: Filters = NO_FILTERS, refreshWhileImporting = false) {
   return useInfiniteQuery({
-    queryKey: keys.games(q),
+    queryKey: keys.games(q, filters),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
-      api.get<GamesPage>(`/api/games?size=12&page=${pageParam}&q=${encodeURIComponent(q)}`),
+      api.get<GamesPage>(`/api/games?size=12&page=${pageParam}&q=${encodeURIComponent(q)}${filterQuery(filters)}`),
     getNextPageParam: (last) => (last.page.number + 1 < last.page.totalPages ? last.page.number + 1 : undefined),
     placeholderData: (previous) => previous, // keep the old results on screen while the next search loads
     refetchInterval: refreshWhileImporting ? 5000 : false,

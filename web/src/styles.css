@@ -12,6 +12,9 @@
   --accent-soft: #e9edff;
   --danger: #c0352b;
   --danger-soft: #fdecea;
+  --rating-good: #1b6fa8;
+  --rating-mixed: #856514;
+  --rating-bad: #a34c25;
   --steam: #1b2838;
   --steam-hover: #263a52;
   --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
@@ -35,6 +38,9 @@
     --accent-soft: #1d2748;
     --danger: #ff7d72;
     --danger-soft: #3a1c1a;
+    --rating-good: #66c0f4;
+    --rating-mixed: #c9b179;
+    --rating-bad: #e0764c;
     --steam: #2a475e;
     --steam-hover: #35597a;
     --shadow: 0 1px 2px rgb(0 0 0 / 40%);
@@ -694,4 +700,83 @@ a.row-title:hover {
 .chip .game-icon,
 .chip .game-tile {
   border-radius: 4px;
+}
+
+/* ---------- genre + rating filters and badges ---------- */
+.filter-bar {
+  margin-bottom: 16px;
+}
+.chips-wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  margin-bottom: 8px;
+}
+.chip-small {
+  padding: 4px 12px;
+  font-size: 0.82rem;
+}
+.filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.filter-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.filter-select select {
+  min-height: 34px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.link-button {
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 6px;
+}
+.badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.badge-good {
+  color: var(--rating-good);
+  border-color: color-mix(in srgb, var(--rating-good) 45%, var(--border));
+}
+.badge-mixed {
+  color: var(--rating-mixed);
+  border-color: color-mix(in srgb, var(--rating-mixed) 45%, var(--border));
+}
+.badge-bad {
+  color: var(--rating-bad);
+  border-color: color-mix(in srgb, var(--rating-bad) 45%, var(--border));
+}
+.badge-percent {
+  font-weight: 500;
 }

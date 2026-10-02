@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
+import type { FilterOptions } from './types';
 
 export function renderApp(ui: ReactElement, route = '/') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
@@ -38,3 +39,17 @@ export function stubApi(routes: Record<string, Handler>) {
   vi.stubGlobal('fetch', fetchMock);
   return { calls, fetchMock };
 }
+
+/** What GET /api/catalog/filters answers, for tests that render the filter controls or genre badges. */
+export const FILTER_OPTIONS: FilterOptions = {
+  genres: [
+    { code: 'ACTION', label: 'Action' },
+    { code: 'RPG', label: 'RPG' },
+    { code: 'MASSIVELY_MULTIPLAYER', label: 'Massively Multiplayer' },
+  ],
+  ratings: [
+    { minRating: 6, label: 'Mostly Positive' },
+    { minRating: 8, label: 'Very Positive' },
+    { minRating: 9, label: 'Overwhelmingly Positive' },
+  ],
+};

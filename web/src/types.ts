@@ -8,6 +8,19 @@ export interface User {
   avatarUrl: string | null;
 }
 
+export interface Rating {
+  /** Steam's level, 1 (Overwhelmingly Negative) to 9 (Overwhelmingly Positive). */
+  score: number;
+  label: string;
+  percentPositive: number | null;
+}
+
+export interface FilterOptions {
+  genres: { code: string; label: string }[];
+  /** "this rating or better" choices, lowest first */
+  ratings: { minRating: number; label: string }[];
+}
+
 export interface Game {
   id: number;
   name: string;
@@ -19,6 +32,10 @@ export interface Game {
   imageUrl: string | null;
   /** Small square Steam icon (https); null if the game has none (yet). */
   iconUrl: string | null;
+  /** Standard Steam genres as codes (e.g. "RPG"); empty until details have been fetched. */
+  genres: string[];
+  /** User-review rating; null for a game without reviews (or before details are fetched). */
+  rating: Rating | null;
 }
 
 export interface WatchlistItem {
@@ -39,7 +56,7 @@ export interface FeedItem {
   publishedAt: string;
 }
 
-export type EmptyReason = 'NO_WATCHLIST' | 'NO_ARTICLES_YET';
+export type EmptyReason = 'NO_WATCHLIST' | 'NO_ARTICLES_YET' | 'NO_MATCHING_GAMES';
 
 export interface FeedPage {
   items: FeedItem[];

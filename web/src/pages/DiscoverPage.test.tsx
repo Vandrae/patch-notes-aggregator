@@ -1,11 +1,11 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, renderApp, stubApi } from '../test-utils';
+import { FILTER_OPTIONS, jsonResponse, renderApp, stubApi } from '../test-utils';
 import type { CatalogStatus, Game, GamesPage } from '../types';
 import { DiscoverPage } from './DiscoverPage';
 
-const deadlock: Game = { id: 7, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 1422450, shortDescription: null, imageUrl: null, iconUrl: null };
+const deadlock: Game = { id: 7, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 1422450, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
 
 const gamesPage = (content: Game[]): GamesPage => ({
   content,
@@ -42,7 +42,7 @@ describe('DiscoverPage', () => {
   });
 
   it('lets you tell same-named games apart by linking each to its Steam store page', async () => {
-    const lookalike: Game = { id: 8, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 513790, shortDescription: null, imageUrl: null, iconUrl: null };
+    const lookalike: Game = { id: 8, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 513790, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
     stubApi({
       'GET /api/catalog/status': () => jsonResponse(status({})),
       'GET /api/watchlist': () => jsonResponse([]),
@@ -100,7 +100,7 @@ describe('DiscoverPage', () => {
     });
     renderApp(<DiscoverPage />);
 
-    expect(await screen.findByText(/loading covers, descriptions and popularity/i)).toHaveTextContent('42,000 of 190,000');
+    expect(await screen.findByText(/loading covers, descriptions, genres, ratings and popularity/i)).toHaveTextContent('42,000 of 190,000');
   });
 
   it('says so when a search matches nothing', async () => {
@@ -151,5 +151,79 @@ describe('DiscoverPage', () => {
     await screen.findByText('Deadlock');
     expect(screen.queryByText(/importing the steam catalog/i)).toBeNull();
     expect(screen.queryByText(/hasn't been imported/i)).toBeNull();
+  });
+
+  describe('genre and rating filters', () => {
+    const rpg: Game = {
+      ...deadlock,
+      id: 9,
+      name: 'Elden Ring',
+      steamAppId: 1245620,
+      genres: ['ACTION', 'RPG'],
+      rating: { score: 9, label: 'Overwhelmingly Positive', percentPositive: 96 },
+    };
+
+    const stubDiscover = (games: (url: string) => Response) =>
+      stubApi({
+        'GET /api/catalog/status': () => jsonResponse(status({})),
+        'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS),
+        'GET /api/watchlist': () => jsonResponse([]),
+        'GET /api/games': games,
+      });
+
+    it('sends the chosen genres and minimum rating to the API and says the list is filtered', async () => {
+      const { calls } = stubDiscover((url) => jsonResponse(gamesPage(url.includes('genre=RPG') ? [rpg] : [deadlock])));
+      renderApp(<DiscoverPage />);
+
+      await userEvent.click(await screen.findByRole('button', { name: 'RPG' }));
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
+
+      await waitFor(() =>
+        expect(calls.some((c) => c.url.includes('genre=RPG') && c.url.includes('minRating=8'))).toBe(true),
+      );
+      expect(await screen.findByText(/fit your filters/i)).toHaveTextContent('1 game fit your filters');
+      expect(screen.getByRole('button', { name: 'RPG' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('starts with the filters from the address, so a filtered view can be reloaded or shared', async () => {
+      const { calls } = stubDiscover(() => jsonResponse(gamesPage([rpg])));
+      renderApp(<DiscoverPage />, '/discover?genre=ACTION&genre=RPG&rating=9');
+
+      await screen.findByText('Elden Ring');
+      expect(calls.some((c) => c.url.includes('genre=ACTION&genre=RPG&minRating=9'))).toBe(true);
+      expect(await screen.findByRole('button', { name: 'Action' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it("shows each game's rating and genres", async () => {
+      stubDiscover(() => jsonResponse(gamesPage([rpg])));
+      const { container } = renderApp(<DiscoverPage />);
+
+      await screen.findByText('Elden Ring');
+      await waitFor(() => expect(container.querySelector('.badges')).toHaveTextContent('Action'));
+      const badges = container.querySelector('.badges');
+      expect(badges).toHaveTextContent('Overwhelmingly Positive · 96%');
+      expect(badges).toHaveTextContent('RPG');
+    });
+
+    it('explains an empty filtered result, and clearing the filters brings the games back', async () => {
+      stubDiscover((url) => jsonResponse(gamesPage(url.includes('genre=') ? [] : [deadlock])));
+      renderApp(<DiscoverPage />, '/discover?genre=RPG');
+
+      expect(await screen.findByText(/no games fit these filters\. try removing a genre or lowering the rating/i)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+      expect(await screen.findByText('Deadlock')).toBeInTheDocument();
+    });
+
+    it('warns that filters only know the games loaded so far while details are still loading', async () => {
+      stubApi({
+        'GET /api/catalog/status': () => jsonResponse(status({ loadingDetails: true, detailsLoaded: 10, games: 100 })),
+        'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS),
+        'GET /api/watchlist': () => jsonResponse([]),
+        'GET /api/games': () => jsonResponse(gamesPage([])),
+      });
+      renderApp(<DiscoverPage />, '/discover?genre=RPG');
+
+      expect(await screen.findByText(/genres and ratings are still loading from steam/i)).toBeInTheDocument();
+    });
   });
 });

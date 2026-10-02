@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { GameBadges } from '../components/GameBadges';
 import { GameMeta } from '../components/GameMeta';
 import { GameThumb } from '../components/GameThumb';
 import { EmptyState, ErrorState, SkeletonList } from '../components/States';
@@ -44,6 +45,7 @@ export function WatchlistPage() {
                   {game.name}
                 </Link>
                 {game.shortDescription && <p className="row-desc">{game.shortDescription}</p>}
+                <GameBadges game={game} />
                 <GameMeta game={game} />
                 <span className="muted small">Following since {fullDate(addedAt)}</span>
               </div>

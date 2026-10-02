@@ -5,7 +5,7 @@ import { jsonResponse, renderApp, stubApi } from '../test-utils';
 import type { Game, WatchlistItem } from '../types';
 import { WatchButton } from './WatchButton';
 
-const game: Game = { id: 1, name: 'RuneScape: Dragonwilds', sourceType: 'STEAM_NEWS', steamAppId: 1374490, shortDescription: null, imageUrl: null, iconUrl: null };
+const game: Game = { id: 1, name: 'RuneScape: Dragonwilds', sourceType: 'STEAM_NEWS', steamAppId: 1374490, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
 
 describe('WatchButton', () => {
   beforeEach(() => {

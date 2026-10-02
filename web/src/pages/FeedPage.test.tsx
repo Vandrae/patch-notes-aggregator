@@ -1,11 +1,12 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jsonResponse, renderApp, stubApi } from '../test-utils';
+import { FILTER_OPTIONS, jsonResponse, renderApp, stubApi } from '../test-utils';
 import type { FeedPage as FeedPageData, Game, WatchlistItem } from '../types';
 import { FeedPage } from './FeedPage';
 
-const dragonwilds: Game = { id: 1, name: 'RuneScape: Dragonwilds', sourceType: 'STEAM_NEWS', steamAppId: 1374490, shortDescription: null, imageUrl: null, iconUrl: null };
-const eldenRing: Game = { id: 2, name: 'Elden Ring', sourceType: 'STEAM_NEWS', steamAppId: 1245620, shortDescription: null, imageUrl: null, iconUrl: null };
+const dragonwilds: Game = { id: 1, name: 'RuneScape: Dragonwilds', sourceType: 'STEAM_NEWS', steamAppId: 1374490, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
+const eldenRing: Game = { id: 2, name: 'Elden Ring', sourceType: 'STEAM_NEWS', steamAppId: 1245620, shortDescription: null, imageUrl: null, iconUrl: null, genres: [], rating: null };
 
 const watch = (...games: Game[]): WatchlistItem[] => games.map((game) => ({ game, addedAt: '2026-09-01T00:00:00Z' }));
 
@@ -170,5 +171,110 @@ describe('FeedPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't load your feed/i);
     screen.getByRole('button', { name: /try again/i }).click();
     expect(await screen.findByRole('heading', { name: /follow a game to get started/i })).toBeInTheDocument();
+  });
+
+  describe('genre and rating filters', () => {
+    const eldenRpg: Game = {
+      ...eldenRing,
+      genres: ['ACTION', 'RPG'],
+      rating: { score: 9, label: 'Overwhelmingly Positive', percentPositive: 96 },
+    };
+    const dragonwildsMmo: Game = {
+      ...dragonwilds,
+      genres: ['MASSIVELY_MULTIPLAYER'],
+      rating: { score: 6, label: 'Mostly Positive', percentPositive: 74 },
+    };
+
+    const item = (gameId: number, gameName: string) => ({
+      articleId: gameId,
+      gameId,
+      gameName,
+      gameIconUrl: null,
+      title: `${gameName} patch`,
+      url: `https://store.steampowered.com/news/${gameId}`,
+      summary: 'Fixes.',
+      type: 'PATCH_NOTES' as const,
+      publishedAt: '2026-09-29T10:11:15Z',
+    });
+
+    const idleCatalog = { games: 1, syncing: false, lastFullSyncAt: null, detailsLoaded: 1, loadingDetails: false };
+
+    const stubFeed = (feed: (url: string) => Response) =>
+      stubApi({
+        'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS),
+        'GET /api/catalog/status': () => jsonResponse(idleCatalog),
+        'GET /api/watchlist': () => jsonResponse(watch(dragonwildsMmo, eldenRpg)),
+        'GET /api/feed': feed,
+      });
+
+    const eldenFeed = () => jsonResponse(page({ totalItems: 1, totalPages: 1, items: [item(2, 'Elden Ring')] }));
+
+    it('asks the API for notes of watched games with the chosen genre and rating', async () => {
+      const { calls } = stubFeed(eldenFeed);
+      renderApp(<FeedPage />);
+
+      await userEvent.click(await screen.findByRole('button', { name: 'RPG' }));
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
+
+      await waitFor(() => expect(calls.some((c) => c.url.includes('genre=RPG') && c.url.includes('minRating=8'))).toBe(true));
+    });
+
+    it('narrows the per-game chips to the watched games that pass the filter', async () => {
+      stubFeed(eldenFeed);
+      renderApp(<FeedPage />, '/feed?genre=ACTION');
+
+      const group = await screen.findByRole('group', { name: /filter by game/i });
+      expect(group).toHaveTextContent('Elden Ring');
+      expect(group).not.toHaveTextContent('RuneScape: Dragonwilds');
+    });
+
+    it('keeps the genre and rating when a game is picked, and the game when they change', async () => {
+      const { calls } = stubFeed(eldenFeed);
+      renderApp(<FeedPage />, '/feed?genre=ACTION');
+
+      const group = await screen.findByRole('group', { name: /filter by game/i });
+      await userEvent.click(within(group).getByRole('button', { name: 'Elden Ring' }));
+      await waitFor(() => expect(calls.some((c) => c.url.includes('gameId=2') && c.url.includes('genre=ACTION'))).toBe(true));
+
+      // a filter the selected game still passes keeps it selected
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
+      await waitFor(() => expect(calls.some((c) => c.url.includes('gameId=2') && c.url.includes('minRating=8'))).toBe(true));
+    });
+
+    it('drops the selected game when a new filter would exclude it', async () => {
+      const { calls } = stubFeed(() => jsonResponse(page({ totalItems: 1, totalPages: 1, items: [item(1, 'RuneScape: Dragonwilds')] })));
+      renderApp(<FeedPage />, '/feed?game=1');
+
+      await userEvent.click(await screen.findByRole('button', { name: 'RPG' })); // Dragonwilds is not an RPG
+      await waitFor(() => expect(calls.some((c) => c.url.includes('genre=RPG') && !c.url.includes('gameId='))).toBe(true));
+    });
+
+    it('says so when no watched game matches, and clearing the filters shows the feed again', async () => {
+      stubFeed((url) =>
+        url.includes('genre=')
+          ? jsonResponse(page({ emptyState: { reason: 'NO_MATCHING_GAMES', message: 'None of the games you are watching match these filters.' } }))
+          : eldenFeed(),
+      );
+      renderApp(<FeedPage />, '/feed?genre=SPORTS');
+
+      expect(await screen.findByRole('heading', { name: /none of your games match/i })).toBeInTheDocument();
+      expect(screen.getByText(/none of the games you watch match these filters/i)).toBeInTheDocument();
+
+      await userEvent.click(screen.getAllByRole('button', { name: /clear filters/i })[0]);
+      expect(await screen.findByRole('link', { name: /elden ring patch/i })).toBeInTheDocument();
+    });
+
+    it('offers no filters to someone who is not watching anything yet', async () => {
+      stubApi({
+        'GET /api/catalog/filters': () => jsonResponse(FILTER_OPTIONS),
+        'GET /api/catalog/status': () => jsonResponse(idleCatalog),
+        'GET /api/watchlist': () => jsonResponse([]),
+        'GET /api/feed': () => jsonResponse(page({ emptyState: { reason: 'NO_WATCHLIST', message: '' } })),
+      });
+      renderApp(<FeedPage />);
+
+      await screen.findByRole('heading', { name: /follow a game to get started/i });
+      expect(screen.queryByRole('group', { name: /filter by genre/i })).toBeNull();
+    });
   });
 });
