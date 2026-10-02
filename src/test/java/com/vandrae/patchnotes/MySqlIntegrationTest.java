@@ -18,6 +18,8 @@ import com.vandrae.patchnotes.externalapi.SteamStoreItem;
 import com.vandrae.patchnotes.users.UserAccounts;
 import com.vandrae.patchnotes.users.UserSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.awaitility.core.ConditionTimeoutException;
+import org.awaitility.core.ThrowingRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,6 +126,28 @@ class MySqlIntegrationTest {
 
     private static LocalDateTime utcNow() {
         return LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    /**
+     * Waits for a condition, and when it never comes true says what the database looked like. CI shows a failed test's
+     * message but not its logs, so the message has to carry the evidence.
+     */
+    private void eventually(Duration timeout, ThrowingRunnable condition) {
+        try {
+            await().atMost(timeout).untilAsserted(condition);
+        } catch (ConditionTimeoutException e) {
+            throw new AssertionError(e.getMessage() + databaseState(), e);
+        }
+    }
+
+    private String databaseState() {
+        String nl = System.lineSeparator();
+        return nl + "--- article (game_id, external_id): " + jdbc.queryForList("SELECT game_id, external_id FROM article ORDER BY id")
+                + nl + "--- event_publication: " + jdbc.queryForList("SELECT SUBSTRING(event_type, 40) AS type, status, completion_attempts, "
+                + "completion_date, SUBSTRING(serialized_event, 1, 100) AS event FROM event_publication ORDER BY publication_date")
+                + nl + "--- game_fetch_state: " + jdbc.queryForList("SELECT game_id, last_polled_at, next_poll_at, consecutive_failures, "
+                + "last_error FROM game_fetch_state ORDER BY game_id")
+                + nl + "--- watchlist_entry: " + jdbc.queryForList("SELECT user_id, game_id FROM watchlist_entry ORDER BY id");
     }
 
     // ------------------------------------------------------------------ the schema
@@ -233,9 +257,9 @@ class MySqlIntegrationTest {
         mvc.perform(put("/api/watchlist/{id}", strategy).with(me).with(csrf())).andExpect(status().isNoContent()); // idempotent
 
         // watching publishes GameWatched into the persisted registry; its listener fetches each game's patch note
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+        eventually(Duration.ofSeconds(30), () ->
                 mvc.perform(get("/api/feed").with(me)).andExpect(jsonPath("$.totalItems").value(2)));
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+        eventually(Duration.ofSeconds(30), () ->
                 assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM event_publication WHERE completion_date IS NULL", Integer.class)).isZero());
 
         mvc.perform(get("/api/feed").param("genre", "RPG").with(me)).andExpect(jsonPath("$.totalItems").value(1))
@@ -264,7 +288,7 @@ class MySqlIntegrationTest {
         jdbc.update("INSERT INTO watchlist_entry (user_id, game_id, added_at) VALUES (?, ?, ?)", user.id(), second, utcNow());
 
         // the tick adds a schedule row for each, polls them, and sets the next time from the age of their newest patch note
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        eventually(Duration.ofSeconds(30), () -> {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM game_fetch_state WHERE game_id IN (?, ?) AND last_polled_at IS NOT NULL "
                     + "AND next_poll_at > ? AND consecutive_failures = 0", Integer.class, first, second, utcNow())).isEqualTo(2);
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM article WHERE game_id IN (?, ?)", Integer.class, first, second)).isEqualTo(2);
@@ -275,7 +299,7 @@ class MySqlIntegrationTest {
 
         // stop watching one: the next tick forgets its schedule row and leaves the other alone
         jdbc.update("DELETE FROM watchlist_entry WHERE user_id = ? AND game_id = ?", user.id(), second);
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        eventually(Duration.ofSeconds(30), () -> {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM game_fetch_state WHERE game_id = ?", Integer.class, second)).isZero();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM game_fetch_state WHERE game_id = ?", Integer.class, first)).isEqualTo(1);
         });
