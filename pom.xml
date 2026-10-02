@@ -123,6 +123,17 @@
       <artifactId>spring-modulith-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- a real MySQL in a throwaway container for the database tests (versions come from Spring Boot's BOM) -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-mysql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
