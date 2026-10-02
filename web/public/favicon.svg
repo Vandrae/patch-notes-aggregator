@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Same drawing as src/components/Logo.tsx. Keep the two in step. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#35546d"/><stop offset=".45" stop-color="#1b2838"/><stop offset="1" stop-color="#10161f"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="patch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a4d007"/><stop offset="1" stop-color="#3f7a1c"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#tile)"/>
+  <rect width="32" height="16" rx="8" fill="url(#sheen)"/>
+  <rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="#fff" stroke-opacity=".1"/>
+  <g transform="rotate(-7 12 13)">
+    <path d="M5.5 7.5a2 2 0 0 1 2-2h8l4.5 4.5V20a2 2 0 0 1-2 2h-10.5a2 2 0 0 1-2-2z" fill="#c7d5e0"/>
+    <rect x="8" y="11" width="7" height="1.5" rx=".75" fill="#46657e"/>
+    <rect x="8" y="14.2" width="5" height="1.5" rx=".75" fill="#46657e"/>
+  </g>
+  <g transform="rotate(9 21.5 21.5)">
+    <rect x="14" y="14" width="15" height="15" rx="3.2" fill="url(#patch)" stroke="#10161f" stroke-width="1.4"/>
+    <rect x="15.8" y="15.8" width="11.4" height="11.4" rx="2" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width=".9" stroke-dasharray="1.6 1.2"/>
+    <path d="M21.5 18.8v5.4M18.8 21.5h5.4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
