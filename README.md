@@ -1,5 +1,7 @@
 # Game Patch Notes Aggregator
 
+[![CI](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml/badge.svg)](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml)
+
 A Spring Boot REST API that lets a user search a large catalog of games, build a
 personal watchlist, and get a news-feed-style view of recent patch notes for
 just the games they care about. Built to demonstrate skills a lot of junior
@@ -65,6 +67,32 @@ Secrets go in a git-ignored `.env` (copy `.env.example`). The Steam news endpoin
 look up your Steam name and avatar at login (login still works without it, with a generic name) and, shortly, for the
 full-catalog sync. Set `JWT_SECRET` (32+ chars) so sessions survive restarts. MySQL instead of H2: `docker compose up -d`,
 then run with `--spring.profiles.active=mysql`.
+
+**With Docker** (the whole stack, no JDK or Node needed; you only need Docker):
+
+```bash
+cp .env.example .env          # fill in JWT_SECRET, MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD (and STEAM_API_KEY)
+docker compose -f compose.prod.yaml up -d --build
+docker compose -f compose.prod.yaml logs -f app      # then open http://localhost:8080
+```
+
+How it fits together:
+
+- The **`Dockerfile` has two stages.** The first (a full JDK) runs the same `./mvnw package` as above, which also builds the web
+  UI. The second (a JRE only) receives just the finished jar, so the image holds no source, compilers or Node. It runs as a
+  non-root user and has a health check against `/actuator/health/readiness`. Dependencies are resolved before the source is
+  copied, so editing code does not re-download them.
+- **`.dockerignore`** keeps `.env`, `data/`, build output and `.git` out of the build, so a secret can never end up inside an image.
+- **`compose.prod.yaml`** starts the app and MySQL 8.4. MySQL keeps its data in a named volume (`down` keeps it, `down -v` wipes
+  it) and is not published to your machine; the app starts only once MySQL is healthy. Required secrets are written
+  `${NAME:?message}`, so compose refuses to start when one is missing instead of running without it. Set `PUBLIC_BASE_URL` to
+  your https address when you deploy (https also turns on the Secure cookie flag).
+- `compose.yaml` (without `.prod`) is the development one: only a MySQL with its port open, for `--spring.profiles.active=mysql`.
+
+**Continuous integration** (`.github/workflows/ci.yml`, on every push): the backend tests on JDK 21, the frontend typecheck, tests
+and build on Node 24, then the Docker image is built and the production compose stack is started against a real MySQL 8.4
+and smoke-tested (health, the web app, a client-side route, the API rejecting anonymous calls, and Flyway applying its
+migrations on MySQL). A failing backend test is shown as an annotation on the run page.
 
 **Signing in:** there are no passwords. Open <http://localhost:8080>, click **Sign in through Steam**, sign in on Steam's own
 page, and you are sent back signed in (an HttpOnly session cookie). The app has a feed (with a per-game filter), game
