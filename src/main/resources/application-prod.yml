@@ -1,0 +1,47 @@
+# Production settings: add with SPRING_PROFILES_ACTIVE=prod (compose.prod.yaml uses "prod,mysql").
+# They sit on top of application.yml, and the app refuses to start if a setting that must be present is missing:
+#   - JWT_SECRET (32+ characters) must be set, see SecurityConfig
+#   - PUBLIC_BASE_URL must be an https address (http://localhost is allowed for trying this profile locally),
+#     see ProductionSettingsCheck
+
+server:
+  # Stop accepting new requests on shutdown, but let running ones finish.
+  shutdown: graceful
+  # Behind a reverse proxy or load balancer that terminates TLS, believe its X-Forwarded-* headers so the app knows the
+  # request was https (that is what makes Strict-Transport-Security be sent). Set FORWARD_HEADERS_STRATEGY=none if
+  # clients can reach the app directly, without a proxy, because then they could forge those headers.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+  # Error responses never carry exception messages, stack traces or validation details.
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+  compression:
+    enabled: true
+
+spring:
+  lifecycle:
+    # how long a graceful shutdown waits for in-flight work
+    timeout-per-shutdown-phase: 30s
+  task:
+    scheduling:
+      shutdown:
+        # let a running poll or sync tick finish (or notice the interrupt) instead of cutting it off mid-write
+        await-termination: true
+        await-termination-period: 30s
+  jpa:
+    show-sql: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health   # nothing else is reachable over HTTP; metrics are registered but not exposed
+
+logging:
+  level:
+    root: INFO
