@@ -18,9 +18,8 @@ export function GameMeta({ game }: { game: Game }) {
         rel="noopener noreferrer"
         title={`Steam app ${game.steamAppId}`}
       >
-        <SteamLogo />
         <span>View on Steam</span>
-        <span aria-hidden="true">↗</span>
+        <SteamLogo size={16} />
         <span className="visually-hidden"> (app {game.steamAppId}, opens in a new tab)</span>
       </a>
     </span>
