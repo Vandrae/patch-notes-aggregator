@@ -65,10 +65,10 @@ class CatalogMetadataServiceTest {
     private static Map<Long, SteamStoreItem> storeAnswer(Collection<Long> ids) {
         Map<Long, SteamStoreItem> answer = new HashMap<>();
         if (ids.contains(POPULAR_NO_REVIEWS)) {
-            answer.put(POPULAR_NO_REVIEWS, new SteamStoreItem(POPULAR_NO_REVIEWS, "Early development.", "steam/apps/1/a/capsule_231x87.jpg?t=1", POPULAR_NO_REVIEWS + "/" + "a".repeat(40) + ".jpg", 0));
+            answer.put(POPULAR_NO_REVIEWS, new SteamStoreItem(POPULAR_NO_REVIEWS, "Early development.", "steam/apps/1/a/capsule_231x87.jpg?t=1", POPULAR_NO_REVIEWS + "/" + "a".repeat(40) + ".jpg", 0, 0, null, List.of(9L)));
         }
         if (ids.contains(REVIEWED)) {
-            answer.put(REVIEWED, new SteamStoreItem(REVIEWED, "<b>Gather</b> &amp; build.  <br>In a   big world.", "steam/apps/2/b/capsule_231x87.jpg?t=2", null, 500));
+            answer.put(REVIEWED, new SteamStoreItem(REVIEWED, "<b>Gather</b> &amp; build.  <br>In a   big world.", "steam/apps/2/b/capsule_231x87.jpg?t=2", null, 500, 8, 91, List.of(19L, 122L, 3859L)));
         }
         return answer; // NO_STORE_PAGE is deliberately absent
     }
@@ -97,6 +97,39 @@ class CatalogMetadataServiceTest {
         assertThat(((Number) popular.get("peak_players")).intValue()).isEqualTo(100_000);
         assertThat(((Number) popular.get("popularity")).longValue()).isEqualTo(1_000_000);
         assertThat(((Number) popular.get("popularity")).longValue()).isGreaterThan(((Number) reviewed.get("popularity")).longValue());
+    }
+
+    @Test
+    void storesTheReviewRatingAndOnlyTheStandardGenresAmongTheTags() {
+        metadata.tryEnrich();
+
+        var reviewed = jdbc.queryForMap("SELECT review_score, percent_positive FROM game WHERE steam_app_id = ?", REVIEWED);
+        assertThat(((Number) reviewed.get("review_score")).intValue()).isEqualTo(8);
+        assertThat(((Number) reviewed.get("percent_positive")).intValue()).isEqualTo(91);
+        assertThat(genres(REVIEWED)).containsExactlyInAnyOrder("ACTION", "RPG"); // 3859 is a free-form tag, not a genre
+
+        var popular = jdbc.queryForMap("SELECT review_score, percent_positive FROM game WHERE steam_app_id = ?", POPULAR_NO_REVIEWS);
+        assertThat(((Number) popular.get("review_score")).intValue()).isZero();   // no reviews yet: no rating
+        assertThat(popular.get("percent_positive")).isNull();
+        assertThat(genres(POPULAR_NO_REVIEWS)).containsExactly("STRATEGY");
+        assertThat(genres(NO_STORE_PAGE)).isEmpty();
+    }
+
+    @Test
+    void aRefreshReplacesGenresInsteadOfAccumulatingThem() {
+        metadata.tryEnrich();
+        jdbc.update("UPDATE game SET metadata_synced_at = NULL WHERE steam_app_id = ?", REVIEWED);
+        when(steam.getStoreItems(anyCollection())).thenReturn(Map.of(REVIEWED,
+                new SteamStoreItem(REVIEWED, "x", null, null, 10, 6, 72, List.of(122L, 701L))));
+
+        metadata.tryEnrich();
+
+        assertThat(genres(REVIEWED)).containsExactlyInAnyOrder("RPG", "SPORTS"); // ACTION was dropped by Steam
+    }
+
+    private List<String> genres(long appId) {
+        return jdbc.queryForList("SELECT genre FROM game_genre gg JOIN game g ON g.id = gg.game_id WHERE g.steam_app_id = ?",
+                String.class, appId);
     }
 
     @Test

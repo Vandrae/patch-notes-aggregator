@@ -15,6 +15,7 @@ public record SteamStoreItemsEnvelope(Response response) {
 
     public record Item(Long id, Long appid, Integer success,
                        @JsonProperty("basic_info") BasicInfo basicInfo,
+                       @JsonProperty("tagids") List<Long> tagIds,
                        Reviews reviews,
                        Assets assets) {
     }
@@ -25,7 +26,9 @@ public record SteamStoreItemsEnvelope(Response response) {
     public record Reviews(@JsonProperty("summary_filtered") Summary summaryFiltered) {
     }
 
-    public record Summary(@JsonProperty("review_count") Integer reviewCount) {
+    public record Summary(@JsonProperty("review_count") Integer reviewCount,
+                         @JsonProperty("percent_positive") Integer percentPositive,
+                         @JsonProperty("review_score") Integer reviewScore) {
     }
 
     public record Assets(@JsonProperty("asset_url_format") String assetUrlFormat,

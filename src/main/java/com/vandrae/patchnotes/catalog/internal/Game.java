@@ -1,16 +1,24 @@
 package com.vandrae.patchnotes.catalog.internal;
 
 import com.vandrae.patchnotes.catalog.SourceType;
+import com.vandrae.patchnotes.catalog.Genre;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.BatchSize;
+
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "game")
@@ -53,6 +61,21 @@ public class Game {
     /** Ranks equally relevant search results. Written by the metadata job, never by JPA. */
     @Column(nullable = false, insertable = false, updatable = false)
     private long popularity;
+
+    /** Steam's 0-9 review level (0 = no reviews). Written by the metadata job, never by JPA. */
+    @Column(name = "review_score", nullable = false, insertable = false, updatable = false)
+    private int reviewScore;
+
+    @Column(name = "percent_positive", insertable = false, updatable = false)
+    private Integer percentPositive;
+
+    /** Read-only view: the metadata job writes game_genre with plain JDBC. Batched so a page of results is one query. */
+    @ElementCollection
+    @CollectionTable(name = "game_genre", joinColumns = @JoinColumn(name = "game_id"))
+    @Column(name = "genre")
+    @Enumerated(EnumType.STRING)
+    @BatchSize(size = 50)
+    private Set<Genre> genres = new HashSet<>();
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
@@ -101,5 +124,17 @@ public class Game {
 
     public long getPopularity() {
         return popularity;
+    }
+
+    public int getReviewScore() {
+        return reviewScore;
+    }
+
+    public Integer getPercentPositive() {
+        return percentPositive;
+    }
+
+    public Set<Genre> getGenres() {
+        return genres;
     }
 }

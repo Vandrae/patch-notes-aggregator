@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p><b>Order.</b> Most useful first: games on Steam's most-played chart, then the most recently updated, then the rest.
  *
- * <p><b>Popularity</b> is {@code reviews + 10 * peak players on the most-played chart}. Reviews cover almost every
+ * <p><b>Genre and rating.</b> The same request also returns each game's top store tags (the standard genres are among
+ * them) and Steam's review level, which is what Discover and the feed filter on.
+ *
+ * * <p><b>Popularity</b> is {@code reviews + 10 * peak players on the most-played chart}. Reviews cover almost every
  * game; the chart covers hugely played games with few or no reviews yet (Valve's Deadlock has none), which reviews
  * alone would rank at the bottom. It is a ranking heuristic, not a statistic.
  */
@@ -179,11 +183,21 @@ public class CatalogMetadataService {
             SteamStoreItem item = items.get(target.steamAppId());
             // no store page: still stamp the game as fetched so it isn't re-requested on every run
             rows.add(item == null
-                    ? new Details(target.steamAppId(), null, null, null, 0)
+                    ? new Details(target.steamAppId(), null, null, null, 0, 0, null, Set.of())
                     : new Details(target.steamAppId(), cleanDescription(item.shortDescription()), item.imagePath(),
-                            item.iconPath(), item.reviewCount()));
+                            item.iconPath(), item.reviewCount(), item.reviewScore(), item.percentPositive(),
+                            genresOf(item.tagIds())));
         }
         return rows;
+    }
+
+    /** Keeps only the tags that are one of the standard genres. */
+    static Set<Genre> genresOf(List<Long> tagIds) {
+        Set<Genre> genres = EnumSet.noneOf(Genre.class);
+        for (long tagId : tagIds) {
+            Genre.fromSteamTag(tagId).ifPresent(genres::add);
+        }
+        return genres;
     }
 
     /** Steam's descriptions can contain HTML/entities; show plain text, a few lines at most, cut on a word boundary. */

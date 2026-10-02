@@ -35,6 +35,8 @@ import static org.mockito.Mockito.when;
 @ActiveProfiles("test")
 class CatalogScaleTest {
 
+    /** Steam tag ids of the ten genres, handed out round-robin so every genre has ~15,000 games. */
+    private static final List<Long> GENRE_TAGS = List.of(19L, 21L, 597L, 492L, 128L, 699L, 122L, 599L, 701L, 9L);
     private static final int PAGE = 50_000;
     private static final int PAGES = 3;
 
@@ -94,7 +96,9 @@ class CatalogScaleTest {
             for (long id : ids) {
                 answer.put(id, new SteamStoreItem(id, "A description of game " + id,
                         "steam/apps/%d/abc/capsule_231x87.jpg?t=1".formatted(id),
-                        "%d/%040x.jpg".formatted(id, id), (int) (id % 1000)));
+                        "%d/%040x.jpg".formatted(id, id), (int) (id % 1000),
+                        (int) (id % 10), (int) (id % 10) == 0 ? null : 50 + (int) (id % 10) * 5,
+                        List.of(GENRE_TAGS.get((int) (id % GENRE_TAGS.size())))));
             }
             return answer;
         });
@@ -119,6 +123,21 @@ class CatalogScaleTest {
         var browse = timed("browse with no query (all 150,000, sorted by popularity)", () -> catalog.search("", 0, 20));
         assertThat(browse.took()).as("browse").isLessThan(Duration.ofSeconds(4));
         assertThat(browse.page().getContent().getFirst().name()).isEqualTo("Synthetic Game %06d".formatted(1_000 + 75_000));
+
+        // ---- the same worst cases with genre and rating filters on (each genre has 15,000 games; level 9 is every tenth id)
+        var rpg = timed("browse, genre RPG", () -> catalog.search("", new GameFilter(java.util.Set.of(Genre.RPG), 0), 0, 20));
+        assertThat(rpg.page().getTotalElements()).isEqualTo(PAGE * PAGES / 10);
+        assertThat(rpg.took()).as("browse by genre").isLessThan(Duration.ofSeconds(4));
+
+        var rated = timed("search \"synthetic\", rating 9+", () -> catalog.search("synthetic", new GameFilter(null, 9), 0, 20));
+        assertThat(rated.page().getTotalElements()).isEqualTo(PAGE * PAGES / 10);
+        assertThat(rated.page().getContent()).allSatisfy(g -> assertThat(g.rating().score()).isEqualTo(9));
+        assertThat(rated.took()).as("search by rating").isLessThan(Duration.ofSeconds(4));
+
+        var both = timed("search \"synthetic\", genres RPG+RACING, rating 5+",
+                () -> catalog.search("synthetic", new GameFilter(java.util.Set.of(Genre.RPG, Genre.RACING), 5), 0, 20));
+        assertThat(both.page().getTotalElements()).isEqualTo(PAGE * PAGES / 5); // RPG is level 6, RACING level 5: both pass
+        assertThat(both.took()).as("search by genre and rating").isLessThan(Duration.ofSeconds(4));
     }
 
     private record Timed(org.springframework.data.domain.Page<GameSummary> page, Duration took) {

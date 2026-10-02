@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -41,9 +42,15 @@ public class CatalogService {
      * A blank query lists the whole catalog, most popular first.
      */
     public Page<GameSummary> search(String query, int page, int size) {
+        return search(query, GameFilter.NONE, page, size);
+    }
+
+    /** As {@link #search(String, int, int)}, narrowed to games with one of the filter's genres and at least its rating. */
+    public Page<GameSummary> search(String query, GameFilter filter, int page, int size) {
+        var f = Criteria.of(filter);
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.clamp(size, 1, MAX_PAGE_SIZE)); // ordering is in the queries
         if (query == null || query.isBlank()) {
-            return games.browse(pageable).map(this::toSummary);
+            return games.browse(f.minRating, f.anyGenre, f.genres, pageable).map(this::toSummary);
         }
         String normalized = NameSearch.normalize(query);
         if (normalized.isEmpty()) {
@@ -52,7 +59,19 @@ public class CatalogService {
         }
         String prefix = normalized + "%";
         String contains = normalized.length() >= MIN_CONTAINS_LENGTH ? "%" + normalized + "%" : prefix;
-        return games.search(normalized, prefix, contains, pageable).map(this::toSummary);
+        return games.search(normalized, prefix, contains, f.minRating, f.anyGenre, f.genres, pageable).map(this::toSummary);
+    }
+
+    /** The subset of {@code ids} that passes the filter, in no particular order. */
+    public List<Long> filterIds(Collection<Long> ids, GameFilter filter) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        if (filter.isEmpty()) {
+            return List.copyOf(ids);
+        }
+        var f = Criteria.of(filter);
+        return games.matching(ids, f.minRating, f.anyGenre, f.genres);
     }
 
     public Optional<GameSummary> findById(long id) {
@@ -69,10 +88,20 @@ public class CatalogService {
                 .collect(Collectors.toMap(GameSummary::id, Function.identity()));
     }
 
+    /** A filter in the form the queries take: an empty genre list is not portable in JPQL, so a placeholder stands in. */
+    private record Criteria(int minRating, boolean anyGenre, Collection<Genre> genres) {
+        static Criteria of(GameFilter filter) {
+            boolean any = filter.genres().isEmpty();
+            return new Criteria(filter.minRating(), any, any ? List.of(Genre.ACTION) : filter.genres());
+        }
+    }
+
     private GameSummary toSummary(Game game) {
         String imageUrl = game.getImagePath() == null ? null : imageBaseUrl + game.getImagePath();
         String iconUrl = game.getIconPath() == null ? null : iconBaseUrl + game.getIconPath();
         return new GameSummary(game.getId(), game.getName(), game.getSourceType(), game.getSteamAppId(),
-                game.getShortDescription(), imageUrl, iconUrl);
+                game.getShortDescription(), imageUrl, iconUrl,
+                game.getGenres().stream().sorted().toList(),
+                Rating.of(game.getReviewScore(), game.getPercentPositive()));
     }
 }

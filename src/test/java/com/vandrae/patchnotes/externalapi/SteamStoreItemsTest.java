@@ -94,6 +94,43 @@ class SteamStoreItemsTest {
     }
 
     @Test
+    void asksForTheStoreTagsSoGenresCanBeDerived() {
+        server.expect(requestTo(startsWith(BASE)))
+                .andExpect(request -> assertThat(request.getURI().getQuery()).contains("\"include_tag_count\":30"))
+                .andRespond(withSuccess("{\"response\":{}}", MediaType.APPLICATION_JSON));
+
+        client.getStoreItems(java.util.List.of(730L));
+
+        server.verify();
+    }
+
+    @Test
+    void parsesTheReviewLevelPercentPositiveAndTagIds() {
+        server.expect(requestTo(startsWith(BASE))).andRespond(withSuccess("""
+                {"response":{"store_items":[
+                  {"id":730,"success":1,"appid":730,"tagids":[1663,19,3859],
+                   "reviews":{"summary_filtered":{"review_count":9899636,"percent_positive":85,"review_score":8,"review_score_label":"Very Positive"}}},
+                  {"id":1422450,"success":1,"appid":1422450,"tagids":[1718],
+                   "reviews":{"summary_filtered":{"review_count":0,"percent_positive":0,"review_score":0}}},
+                  {"id":50,"success":1,"appid":50},
+                  {"id":60,"success":1,"appid":60,"reviews":{"summary_filtered":{"review_count":5,"percent_positive":250,"review_score":42}}}
+                ]}}
+                """, MediaType.APPLICATION_JSON));
+
+        var items = client.getStoreItems(java.util.List.of(730L, 1422450L, 50L, 60L));
+
+        assertThat(items.get(730L).reviewScore()).isEqualTo(8);
+        assertThat(items.get(730L).percentPositive()).isEqualTo(85);
+        assertThat(items.get(730L).tagIds()).containsExactly(1663L, 19L, 3859L);
+        assertThat(items.get(1422450L).reviewScore()).isZero();
+        assertThat(items.get(1422450L).percentPositive()).as("no reviews: no percentage either").isNull();
+        assertThat(items.get(50L).reviewScore()).isZero();
+        assertThat(items.get(50L).tagIds()).isEmpty();
+        assertThat(items.get(60L).reviewScore()).as("clamped into Steam's scale").isEqualTo(9);
+        assertThat(items.get(60L).percentPositive()).isEqualTo(100);
+    }
+
+    @Test
     void buildsTheSquareIconPathFromTheCommunityIconHash() {
         server.expect(requestTo(startsWith(BASE))).andRespond(withSuccess("""
                 {"response":{"store_items":[

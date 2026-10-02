@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,9 @@ public class SteamStoreClient {
 
     /** The most ids {@code GetItems} accepts in one request: ids travel in the URL, which Steam caps (~8 KB). */
     public static final int MAX_ITEMS_PER_REQUEST = 200;
+
+    /** How many of a game's top store tags to ask for; the genre tags are nearly always among the first few. */
+    private static final int TAGS_PER_ITEM = 30;
 
     private static final String FILENAME_PLACEHOLDER = "${FILENAME}";
     /** Relative asset paths come from Steam, but they end up in an {@code <img src>}: allow only plain path characters. */
@@ -116,7 +120,8 @@ public class SteamStoreClient {
         }
         String ids = appIds.stream().map(id -> "{\"appid\":" + id + "}").collect(Collectors.joining(","));
         String input = "{\"ids\":[" + ids + "],\"context\":{\"language\":\"english\",\"country_code\":\"US\",\"steam_realm\":1},"
-                + "\"data_request\":{\"include_assets\":true,\"include_basic_info\":true,\"include_reviews\":true}}";
+                + "\"data_request\":{\"include_assets\":true,\"include_basic_info\":true,\"include_reviews\":true,"
+                + "\"include_tag_count\":" + TAGS_PER_ITEM + "}}";
 
         SteamStoreItemsEnvelope envelope = call("store items", retryWithoutRateLimit, () -> rest.get()
                 .uri(uri -> uri.path("/IStoreBrowseService/GetItems/v1/")
@@ -136,10 +141,14 @@ public class SteamStoreClient {
                 continue; // no store page for this app
             }
             String description = item.basicInfo() == null ? null : item.basicInfo().shortDescription();
-            int reviews = item.reviews() == null || item.reviews().summaryFiltered() == null
-                    || item.reviews().summaryFiltered().reviewCount() == null ? 0 : item.reviews().summaryFiltered().reviewCount();
+            var summary = item.reviews() == null ? null : item.reviews().summaryFiltered();
+            int reviews = summary == null || summary.reviewCount() == null ? 0 : summary.reviewCount();
+            int score = summary == null || summary.reviewScore() == null ? 0 : summary.reviewScore();
+            Integer percent = summary == null || summary.percentPositive() == null || reviews == 0 ? null
+                    : Math.clamp(summary.percentPositive(), 0, 100);
             result.put(appId, new SteamStoreItem(appId, description, imagePath(item.assets()),
-                    iconPath(appId, item.assets()), Math.max(reviews, 0)));
+                    iconPath(appId, item.assets()), Math.max(reviews, 0), Math.clamp(score, 0, 9), percent,
+                    item.tagIds() == null ? List.of() : item.tagIds().stream().filter(Objects::nonNull).toList()));
         }
         return result;
     }

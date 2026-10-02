@@ -1,6 +1,7 @@
 package com.vandrae.patchnotes.feed.internal;
 
 import com.vandrae.patchnotes.catalog.CatalogService;
+import com.vandrae.patchnotes.catalog.GameFilter;
 import com.vandrae.patchnotes.catalog.GameSummary;
 import com.vandrae.patchnotes.feed.internal.FeedResponse.EmptyReason;
 import com.vandrae.patchnotes.feed.internal.FeedResponse.EmptyState;
@@ -38,6 +39,14 @@ class FeedQueries {
      *               someone else's game id can never reveal anything beyond the user's own feed.
      */
     FeedResponse feedFor(long userId, int page, int size, Long gameId) {
+        return feedFor(userId, page, size, gameId, GameFilter.NONE);
+    }
+
+    /**
+     * @param filter optional: only patch notes of watched games with one of these genres and at least this rating
+     *               (a game's genre and rating are the game's, so the filter picks games, not articles)
+     */
+    FeedResponse feedFor(long userId, int page, int size, Long gameId, GameFilter filter) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
 
@@ -50,6 +59,15 @@ class FeedQueries {
             watchedGameIds = watchedGameIds.stream().filter(gameId::equals).toList();
             if (watchedGameIds.isEmpty()) {
                 return empty(safePage, safeSize, EmptyReason.NO_ARTICLES_YET, "You're not watching that game.");
+            }
+        }
+
+        if (!filter.isEmpty()) {
+            Set<Long> matching = Set.copyOf(catalog.filterIds(watchedGameIds, filter));
+            watchedGameIds = watchedGameIds.stream().filter(matching::contains).toList();
+            if (watchedGameIds.isEmpty()) {
+                return empty(safePage, safeSize, EmptyReason.NO_MATCHING_GAMES,
+                        "None of the games you're watching match these filters.");
             }
         }
 

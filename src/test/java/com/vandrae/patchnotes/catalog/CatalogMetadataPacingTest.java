@@ -64,7 +64,7 @@ class CatalogMetadataPacingTest {
                 Collection<Long> ids = invocation.getArgument(0);
                 assertThat(ids.size()).isLessThanOrEqualTo(SteamStoreClient.MAX_ITEMS_PER_REQUEST);
                 Map<Long, SteamStoreItem> answer = new HashMap<>();
-                ids.forEach(id -> answer.put(id, new SteamStoreItem(id, "d", null, null, 1)));
+                ids.forEach(id -> answer.put(id, new SteamStoreItem(id, "d", null, null, 1, 0, null, List.of())));
                 return answer;
             } finally {
                 inFlight.decrementAndGet();
