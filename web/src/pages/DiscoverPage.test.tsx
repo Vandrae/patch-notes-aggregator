@@ -1,0 +1,155 @@
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse, renderApp, stubApi } from '../test-utils';
+import type { CatalogStatus, Game, GamesPage } from '../types';
+import { DiscoverPage } from './DiscoverPage';
+
+const deadlock: Game = { id: 7, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 1422450, shortDescription: null, imageUrl: null, iconUrl: null };
+
+const gamesPage = (content: Game[]): GamesPage => ({
+  content,
+  page: { size: 12, number: 0, totalElements: content.length, totalPages: 1 },
+});
+
+const status = (overrides: Partial<CatalogStatus>): CatalogStatus => ({
+  games: 150_000,
+  syncing: false,
+  lastFullSyncAt: '2026-10-01T04:30:00Z',
+  detailsLoaded: 150_000,
+  loadingDetails: false,
+  ...overrides,
+});
+
+describe('DiscoverPage', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('searches the catalog as you type and shows matching games', async () => {
+    const { calls } = stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({})),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': (url) =>
+        jsonResponse(gamesPage(url.includes('q=deadlock') ? [deadlock] : [])),
+    });
+    renderApp(<DiscoverPage />);
+
+    await userEvent.type(await screen.findByRole('searchbox', { name: /search games/i }), 'deadlock');
+
+    expect(await screen.findByText('Deadlock')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /watch deadlock/i })).toBeInTheDocument();
+    // the search is debounced, so typing 8 letters is not 8 requests
+    await waitFor(() => expect(calls.filter((c) => c.url.includes('q=deadlock')).length).toBe(1));
+  });
+
+  it('lets you tell same-named games apart by linking each to its Steam store page', async () => {
+    const lookalike: Game = { id: 8, name: 'Deadlock', sourceType: 'STEAM_NEWS', steamAppId: 513790, shortDescription: null, imageUrl: null, iconUrl: null };
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({})),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([deadlock, lookalike])),
+    });
+    renderApp(<DiscoverPage />);
+
+    const links = await screen.findAllByRole('link', { name: /view on steam/i });
+
+    expect(links.map((l) => l.getAttribute('href'))).toEqual([
+      'https://store.steampowered.com/app/1422450',
+      'https://store.steampowered.com/app/513790',
+    ]);
+    expect(links[0]).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+
+  it('shows each game with its cover, a short description and the Steam logo link', async () => {
+    const detailed: Game = {
+      ...deadlock,
+      shortDescription: 'Deadlock is a multiplayer game in early development.',
+      imageUrl: 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1422450/abc/capsule_231x87.jpg?t=1',
+      iconUrl: null,
+    };
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({})),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([detailed])),
+    });
+    const { container } = renderApp(<DiscoverPage />);
+
+    expect(await screen.findByText('Deadlock is a multiplayer game in early development.')).toBeInTheDocument();
+    expect(container.querySelector('img.game-thumb')).toHaveAttribute('src', detailed.imageUrl!);
+    expect(screen.getByRole('link', { name: /view on steam/i }).querySelector('svg.steam-logo')).toBeInTheDocument();
+    expect(screen.getByText(/most popular first/i)).toBeInTheDocument();
+  });
+
+  it('says results are ranked by relevance and popularity when searching', async () => {
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({})),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([deadlock])),
+    });
+    renderApp(<DiscoverPage />);
+
+    await userEvent.type(await screen.findByRole('searchbox'), 'deadlock');
+
+    expect(await screen.findByText(/ranked by relevance and popularity/i)).toBeInTheDocument();
+  });
+
+  it('explains that covers and popularity are still loading, with progress', async () => {
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({ loadingDetails: true, detailsLoaded: 42_000, games: 190_000 })),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([deadlock])),
+    });
+    renderApp(<DiscoverPage />);
+
+    expect(await screen.findByText(/loading covers, descriptions and popularity/i)).toHaveTextContent('42,000 of 190,000');
+  });
+
+  it('says so when a search matches nothing', async () => {
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({})),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([])),
+    });
+    renderApp(<DiscoverPage />);
+
+    await userEvent.type(await screen.findByRole('searchbox'), 'zzzz');
+
+    expect(await screen.findByText(/nothing matches "zzzz"\. try a different spelling/i)).toBeInTheDocument();
+  });
+
+  it('explains that the catalog is still being imported instead of showing a mysteriously empty list', async () => {
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({ syncing: true, games: 42_000, lastFullSyncAt: null })),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([])),
+    });
+    renderApp(<DiscoverPage />);
+
+    expect(await screen.findByText(/importing the steam catalog/i)).toHaveTextContent('42,000 games so far');
+    await userEvent.type(await screen.findByRole('searchbox'), 'deadlock');
+    expect(await screen.findByText(/still being imported, so try again in a minute/i)).toBeInTheDocument();
+  });
+
+  it('tells the user when the full catalog was never imported', async () => {
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({ games: 1, lastFullSyncAt: null })),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([])),
+    });
+    renderApp(<DiscoverPage />);
+
+    expect(await screen.findByText(/hasn't been imported yet/i)).toHaveTextContent('only 1 game is searchable');
+  });
+
+  it('shows no notice once the catalog is complete', async () => {
+    stubApi({
+      'GET /api/catalog/status': () => jsonResponse(status({})),
+      'GET /api/watchlist': () => jsonResponse([]),
+      'GET /api/games': () => jsonResponse(gamesPage([deadlock])),
+    });
+    renderApp(<DiscoverPage />);
+
+    await screen.findByText('Deadlock');
+    expect(screen.queryByText(/importing the steam catalog/i)).toBeNull();
+    expect(screen.queryByText(/hasn't been imported/i)).toBeNull();
+  });
+});
