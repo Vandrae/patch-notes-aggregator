@@ -23,7 +23,7 @@ no query, Discover lists the whole catalog most popular first. Each result shows
 image, a short description, and a "View on Steam" link with the Steam logo. Steam has many different games with the same name
 (three are called "Deadlock"), so popularity and that link are how you tell them apart.
 
-**Covers, icons, descriptions and popularity** come from Steam's store API (`IStoreBrowseService/GetItems`, 200 games per request) in
+**Covers, icons, descriptions, genres, ratings and popularity** come from Steam's store API (`IStoreBrowseService/GetItems`, 200 games per request) in
 a second background job that runs after the catalog import. Popularity is `reviews + 10 × peak players on Steam's most-played
 chart`: reviews cover almost every game, and the chart covers hugely played games that have few or no reviews yet (Valve's
 Deadlock has none). It is a ranking heuristic, not a statistic. Steam throttles that endpoint hard (measured: about one request
@@ -31,6 +31,14 @@ per 3 seconds, after which it answers HTTP 429), so the job is **one paced worke
 throttled, and fetches the most useful games first (the most-played chart, then recently updated games). The first run over the
 whole catalog therefore takes about **50 minutes** in the background; search works throughout and improves as it goes (Discover
 shows progress). After that only new, changed or stale (30 days) games are refreshed.
+
+**Genre and rating filters** (Discover and the feed) use two more things from that same request, so they cost no extra calls:
+the game's top store tags, of which Steam's ten standard genres (Action, Adventure, Casual, Indie, Massively Multiplayer,
+Racing, RPG, Simulation, Sports, Strategy) are kept, and Steam's own review level (1 Overwhelmingly Negative … 9 Overwhelmingly
+Positive; 0 = no reviews). Pick any number of genres (a game matches if it has *at least one*) and a "this rating or better"
+level; the two combine. On the feed the filter chooses *games*, so it only ever narrows the notes of games you already watch.
+Both live in the URL (`?genre=RPG&genre=ACTION&rating=8`), so a filtered view survives a reload. A game whose details haven't
+been fetched yet has no genre or rating, so it's left out while a filter is on; Discover says so while the first run is going.
 
 ## Quick start
 
@@ -66,10 +74,11 @@ discovery with search and a one-click Watch (each patch note shows its game's St
 | GET | `/api/auth/steam/callback` | public; Steam returns here; verifies, creates/updates the user, sets the session cookie |
 | POST | `/api/auth/logout` | clears the session cookie |
 | GET / DELETE | `/api/me` | who am I (401 = signed out) / delete my account and watchlist |
-| GET | `/api/games?q=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive) |
+| GET | `/api/games?q=&genre=&minRating=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive); `genre` is repeatable (any of), `minRating` is Steam's 1-9 level |
+| GET | `/api/catalog/filters` | the genres and ratings the filters offer |
 | GET | `/api/watchlist` | caller's watchlist |
 | PUT / DELETE | `/api/watchlist/{gameId}` | idempotent add (201 new / 204 already) and remove |
-| GET | `/api/feed?page=&size=&gameId=` | patch notes for watched games, newest first; `gameId` narrows to one watched game; `emptyState` explains an empty page |
+| GET | `/api/feed?page=&size=&gameId=&genre=&minRating=` | patch notes for watched games, newest first; `gameId` narrows to one watched game, `genre`/`minRating` to watched games that match; `emptyState` explains an empty page |
 
 Everything except the `/api/auth/steam/**` routes, logout and `/actuator/health` requires a session. The browser session
 is an HttpOnly cookie, so writes from the browser must echo the `XSRF-TOKEN` cookie in an `X-XSRF-TOKEN` header (CSRF
