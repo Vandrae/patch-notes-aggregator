@@ -37,19 +37,24 @@ class FetchStateStore {
         return new HashSet<>(jdbc.queryForList("SELECT game_id FROM game_fetch_state", Long.class));
     }
 
-    /** Starts tracking games that have no row yet; they are due at {@code dueAt}. Already-tracked games are left alone. */
+    /**
+     * Starts tracking games that have no row yet; they are due at {@code dueAt}. Already-tracked games are left alone.
+     *
+     * <p>Plain inserts, one per game, each ignoring "that row already exists". The obvious single statement,
+     * {@code INSERT ... SELECT ... WHERE NOT EXISTS (SELECT ... FROM the same table)}, deadlocks on MySQL: its SELECT part
+     * locks the index range it reads, and a fetch that finishes at the same moment (which writes the same game's row inside
+     * its own transaction) waits on that range while the insert waits on the fetch. MySQL then aborts one of them. A plain
+     * insert holds no lock while it waits, so the two cannot block each other, and the loser simply finds the row there.
+     */
     void track(Collection<Long> gameIds, Instant dueAt) {
-        if (gameIds.isEmpty()) {
-            return;
-        }
         LocalDateTime due = utc(dueAt);
-        jdbc.batchUpdate("INSERT INTO game_fetch_state (game_id, next_poll_at) "
-                        + "SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM game_fetch_state WHERE game_id = ?)",
-                List.copyOf(gameIds), gameIds.size(), (ps, id) -> {
-                    ps.setLong(1, id);
-                    ps.setObject(2, due);
-                    ps.setLong(3, id);
-                });
+        for (long gameId : gameIds) {
+            try {
+                jdbc.update("INSERT INTO game_fetch_state (game_id, next_poll_at) VALUES (?, ?)", gameId, due);
+            } catch (DuplicateKeyException alreadyTracked) {
+                // a fetch that just finished created the row first: nothing left to do for this game
+            }
+        }
     }
 
     void untrack(Collection<Long> gameIds) {
@@ -138,10 +143,19 @@ class FetchStateStore {
 
     // ----
 
-    /** Update the row, or create it if the game has none yet. Two writers racing to create it end up with one row. */
+    /**
+     * Update the row, or create it if the game has none yet. Two writers racing to create it end up with one row.
+     *
+     * <p>A row that might not exist is never updated first. On MySQL (default isolation) an UPDATE that matches nothing
+     * still locks the empty index range around the missing key, so two fetches finishing at once for different new games
+     * both hold that range and then each INSERT waits for the other: a deadlock, and MySQL aborts one fetch. So the cheap
+     * check below (a plain read, which takes no lock) decides: a row that is there is updated, which only locks that row,
+     * and one that is not is inserted straight away. If the check was stale, the insert or the update says so and the
+     * other statement takes over.
+     */
     private void upsert(long gameId, String update, PreparedStatementSetter updateArgs, String insert,
                         PreparedStatementSetter insertArgs) {
-        if (jdbc.update(update, updateArgs) > 0) {
+        if (rowExists(gameId) && jdbc.update(update, updateArgs) > 0) {
             return;
         }
         try {
@@ -149,6 +163,10 @@ class FetchStateStore {
         } catch (DuplicateKeyException raced) {
             jdbc.update(update, updateArgs);
         }
+    }
+
+    private boolean rowExists(long gameId) {
+        return !jdbc.queryForList("SELECT 1 FROM game_fetch_state WHERE game_id = ?", Integer.class, gameId).isEmpty();
     }
 
     // LocalDateTime in UTC, matching how Hibernate stores Instants in this app (jdbc.time_zone = UTC)

@@ -276,6 +276,34 @@ class MySqlIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM app_user WHERE id = ?", Integer.class, user.id())).isZero();
     }
 
+    // ------------------------------------------------------------------ many watchers at once
+
+    @Test
+    void watchingManyGamesWhileThePollerRunsNeverLeavesAFailedEvent() throws Exception {
+        // Starting to watch a game publishes an event whose listener fetches it and writes its poll schedule row, while the
+        // poller (ticking every second here) adds schedule rows for newly watched games, so a burst of watches has many
+        // writers on the same table at once. The poller would paper over a failed fetch by fetching the game itself, so the
+        // check is on the events: none may end up failed. (MySqlFetchStateConcurrencyTest provokes the underlying race on
+        // purpose; this one checks the whole path under load, and once failed with a deadlock before that race was fixed.)
+        int games = 60;
+        UserSummary user = users.findOrCreateBySteamId(76561198500000003L, "MySQL burst tester", null);
+        RequestPostProcessor me = signedIn(user);
+        List<Long> ids = new java.util.ArrayList<>();
+        for (int i = 0; i < games; i++) {
+            ids.add(insertGame("Mysqltest Burst " + i, BASE_ID + 400 + i));
+        }
+        String idList = ids.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+
+        for (long id : ids) {
+            mvc.perform(put("/api/watchlist/{id}", id).with(me).with(csrf())).andExpect(status().isCreated());
+        }
+
+        eventually(Duration.ofSeconds(60), () -> assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM article WHERE game_id IN (" + idList + ")", Integer.class)).isEqualTo(games));
+        eventually(Duration.ofSeconds(60), () -> assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM event_publication WHERE status <> 'COMPLETED' OR completion_date IS NULL", Integer.class)).isZero());
+    }
+
     // ------------------------------------------------------------------ the adaptive poller
 
     @Test
