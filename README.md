@@ -32,13 +32,15 @@ throttled, and fetches the most useful games first (the most-played chart, then 
 whole catalog therefore takes about **50 minutes** in the background; search works throughout and improves as it goes (Discover
 shows progress). After that only new, changed or stale (30 days) games are refreshed.
 
-**Genre and rating filters** (Discover and the feed) use two more things from that same request, so they cost no extra calls:
+**Genre, rating and age filters** (Discover and the feed) use three more things from that same request, so they cost no extra calls:
 the game's top store tags, of which Steam's ten standard genres (Action, Adventure, Casual, Indie, Massively Multiplayer,
 Racing, RPG, Simulation, Sports, Strategy) are kept, and Steam's own review level (1 Overwhelmingly Negative … 9 Overwhelmingly
-Positive; 0 = no reviews). Pick any number of genres (a game matches if it has *at least one*) and a "this rating or better"
-level; the two combine. On the feed the filter chooses *games*, so it only ever narrows the notes of games you already watch.
-Both live in the URL (`?genre=RPG&genre=ACTION&rating=8`), so a filtered view survives a reload. A game whose details haven't
-been fetched yet has no genre or rating, so it's left out while a filter is on; Discover says so while the first run is going.
+Positive; 0 = no reviews), and the ESRB age rating Steam shows (Everyone, Everyone 10+, Teen, Mature 17+, Adults Only 18+).
+Many games have no ESRB rating at all (free-to-play and Valve titles, for one), so they never pass an age filter. Pick any number
+of genres and any number of age ratings (a game matches if it has *at least one* of each) and a "this review rating or better"
+level; the three combine. On the feed the filter chooses *games*, so it only ever narrows the notes of games you already watch.
+All of it lives in the URL (`?genre=RPG&genre=ACTION&rating=8&age=MATURE`), so a filtered view survives a reload. A game whose details haven't
+been fetched yet has no genre, rating or age rating, so it's left out while a filter is on; Discover says so while the first run is going.
 
 ## Quick start
 
@@ -74,11 +76,11 @@ discovery with search and a one-click Watch (each patch note shows its game's St
 | GET | `/api/auth/steam/callback` | public; Steam returns here; verifies, creates/updates the user, sets the session cookie |
 | POST | `/api/auth/logout` | clears the session cookie |
 | GET / DELETE | `/api/me` | who am I (401 = signed out) / delete my account and watchlist |
-| GET | `/api/games?q=&genre=&minRating=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive); `genre` is repeatable (any of), `minRating` is Steam's 1-9 level |
-| GET | `/api/catalog/filters` | the genres and ratings the filters offer |
+| GET | `/api/games?q=&genre=&minRating=&age=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive); `genre` and `age` (ESRB, e.g. `TEEN`) are repeatable (any of), `minRating` is Steam's 1-9 review level |
+| GET | `/api/catalog/filters` | the genres, review ratings and age ratings the filters offer |
 | GET | `/api/watchlist` | caller's watchlist |
 | PUT / DELETE | `/api/watchlist/{gameId}` | idempotent add (201 new / 204 already) and remove |
-| GET | `/api/feed?page=&size=&gameId=&genre=&minRating=` | patch notes for watched games, newest first; `gameId` narrows to one watched game, `genre`/`minRating` to watched games that match; `emptyState` explains an empty page |
+| GET | `/api/feed?page=&size=&gameId=&genre=&minRating=&age=` | patch notes for watched games, newest first; `gameId` narrows to one watched game, `genre`/`minRating`/`age` to watched games that match; `emptyState` explains an empty page |
 
 Everything except the `/api/auth/steam/**` routes, logout and `/actuator/health` requires a session. The browser session
 is an HttpOnly cookie, so writes from the browser must echo the `XSRF-TOKEN` cookie in an `X-XSRF-TOKEN` header (CSRF
