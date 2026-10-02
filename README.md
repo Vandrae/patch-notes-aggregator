@@ -120,6 +120,11 @@ graph LR
 | `events` | shared event contracts (`GameWatched`, `ArticlesIngested`) |
 | `web` | serves the React app (built from `web/`) at its client-side routes |
 
+![Architecture overview: the seven backend modules (Users, External APIs, Catalog, Security, Events, Feed, Fetch) and the three flows through them: flagging a game, finding patches, and the user opening the app](docs/architecture.png)
+
+*The design diagram: the modules on the bottom right, and how a request travels through them in each of the three flows.
+The diagram predates the `web` module, which only serves the React app.*
+
 The three flows from the design diagram map to code like this:
 
 - **Flagging a game:** `PUT /api/watchlist/{id}` → JWT check → catalog existence check → save → publish `GameWatched`.
@@ -184,6 +189,8 @@ Custom adapters ──┘      (maps every source into one
  (RSS / Jsoup for          common Article model)
   non-Steam games)
 ```
+
+(The module map and the three request flows are drawn in the [architecture diagram](#modular-monolith) above.)
 
 The scheduled poller only ever polls games that appear on **someone's**
 watchlist — not the full catalog. Both source types (Steam News API and
