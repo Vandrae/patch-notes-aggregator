@@ -1,0 +1,55 @@
+# The whole app as containers: the Patch Notes app plus its MySQL database.
+#
+#   cp .env.example .env      # then fill in the secrets (compose reads .env automatically)
+#   docker compose -f compose.prod.yaml up -d --build
+#   docker compose -f compose.prod.yaml logs -f app
+#
+# (compose.yaml, next to this file, is the development one: just a MySQL with its port open on your machine.)
+#
+# A value written ${NAME:?message} makes compose REFUSE TO START with that message when NAME is unset, so a deployment
+# can never silently come up without a database password or a session-signing key.
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: patchnotes
+      MYSQL_USER: patchnotes
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      # a named volume: the data survives `docker compose down` and container re-creation (use `down -v` to wipe it)
+      - mysql-data:/var/lib/mysql
+    # no `ports:` here on purpose: only the app container, on the private compose network, can reach the database
+    healthcheck:
+      # $$ stops compose from substituting the variable itself, so the shell INSIDE the container expands it
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  app:
+    build: .
+    # the name the built image gets; CI builds and tags it first, then runs compose with --no-build
+    image: ${APP_IMAGE:-patch-notes-aggregator:local}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy   # wait until MySQL answers, not merely until its container exists
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      MYSQL_URL: jdbc:mysql://mysql:3306/patchnotes?rewriteBatchedStatements=true   # "mysql" = the service name above
+      MYSQL_USER: patchnotes
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (32+ characters)}
+      STEAM_API_KEY: ${STEAM_API_KEY:-}
+      # where browsers reach the app; Steam sends people back here after login. Use your https URL in production:
+      # an https address also turns on the Secure flag for the session cookie.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:
