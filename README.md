@@ -89,10 +89,30 @@ How it fits together:
   your https address when you deploy (https also turns on the Secure cookie flag).
 - `compose.yaml` (without `.prod`) is the development one: only a MySQL with its port open, for `--spring.profiles.active=mysql`.
 
+**The `prod` profile** (`SPRING_PROFILES_ACTIVE=prod`; `compose.prod.yaml` uses `prod,mysql`). It adds `application-prod.yml` and two startup
+checks, so a deployment that would be unsafe or quietly broken fails at startup with a clear message instead of coming up:
+
+- **`JWT_SECRET` must be set** (32+ characters). Without it the app would invent a random signing key on every start, signing
+  everyone out and breaking any second instance.
+- **`PUBLIC_BASE_URL` must be an https address**, because the session cookie and the Steam sign-in redirect must not travel
+  over plain http. `http://localhost` is the one exception, so you can try the production setup on your own machine
+  (with a warning in the log). A missing `STEAM_API_KEY` only logs a warning: the app works but cannot import the catalog.
+- The profile also turns on **graceful shutdown** (in-flight requests and a running poll tick get up to 30 seconds), **error
+  responses without messages or stack traces**, **response compression**, trusting a reverse proxy's `X-Forwarded-*`
+  headers (`FORWARD_HEADERS_STRATEGY`; set it to `none` if clients reach the app directly, because then they could forge
+  them), and exposes only `/actuator/health` over HTTP (metrics are recorded but not exposed).
+
+**Security headers** (every profile, on every response): a strict **Content-Security-Policy** (scripts, styles, fonts and
+connections only from the app's own origin, images also from Steam's CDN, no inline script, no eval, no framing, no plugins),
+`Referrer-Policy: no-referrer`, a `Permissions-Policy` that switches off camera, microphone, geolocation, payment and USB,
+`Cross-Origin-Opener-Policy: same-origin`, plus Spring Security's defaults (`X-Content-Type-Options`, `X-Frame-Options: DENY`,
+no caching of API responses, and `Strict-Transport-Security` for one year on https requests). The policy was checked in a
+browser against every page (feed, Discover, watchlist, account) with no violations.
+
 **Continuous integration** (`.github/workflows/ci.yml`, on every push): the backend tests on JDK 21, the frontend typecheck, tests
 and build on Node 24, then the Docker image is built and the production compose stack is started against a real MySQL 8.4
-and smoke-tested (health, the web app, a client-side route, the API rejecting anonymous calls, and Flyway applying its
-migrations on MySQL). A failing backend test is shown as an annotation on the run page.
+and smoke-tested (health, the web app, a client-side route, the API rejecting anonymous calls, the security headers, the
+`prod` profile being active, and Flyway applying its migrations on MySQL). A failing backend test is shown as an annotation on the run page.
 
 **Signing in:** there are no passwords. Open <http://localhost:8080>, click **Sign in through Steam**, sign in on Steam's own
 page, and you are sent back signed in (an HttpOnly session cookie). The app has a feed (with a per-game filter), game
