@@ -9,6 +9,8 @@ public interface WatchlistRepository extends JpaRepository<WatchlistEntry, Long>
 
     boolean existsByUserIdAndGameId(Long userId, Long gameId);
 
+    long countByUserId(Long userId);
+
     List<WatchlistEntry> findByUserIdOrderByAddedAtDesc(Long userId);
 
     long deleteByUserIdAndGameId(Long userId, Long gameId);

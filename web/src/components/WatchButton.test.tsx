@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AnnounceContext } from '../hooks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse, renderApp, stubApi } from '../test-utils';
 import type { Game, WatchlistItem } from '../types';
@@ -64,5 +65,51 @@ describe('WatchButton', () => {
 
     await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
     expect(await screen.findByRole('button', { name: /^watch runescape/i })).toBeInTheDocument();
+  });
+
+  describe('when the server refuses for a reason the person can act on', () => {
+    const refuse = (status: number, detail: string) =>
+      stubApi({
+        'GET /api/watchlist': () => jsonResponse([]),
+        'PUT /api/watchlist/1': () => jsonResponse({ status, detail }, status),
+      });
+
+    const click = async () => {
+      const announce = vi.fn();
+      renderApp(
+        <AnnounceContext.Provider value={announce}>
+          <WatchButton game={game} />
+        </AnnounceContext.Provider>,
+      );
+      await userEvent.click(await screen.findByRole('button', { name: /^watch runescape/i }));
+      return announce;
+    };
+
+    it('shows "List full" on the button and announces the full explanation', async () => {
+      refuse(409, 'Your list is full: you can follow up to 500 games. Remove one to add another.');
+
+      const announce = await click();
+
+      expect(await screen.findByRole('button', { name: /^watch runescape/i })).toHaveTextContent('List full');
+      expect(announce).toHaveBeenCalledWith(expect.stringContaining('up to 500 games'));
+    });
+
+    it('shows "Slow down" when following too quickly', async () => {
+      refuse(429, "You're doing that too quickly. Please wait 12 seconds and try again.");
+
+      const announce = await click();
+
+      expect(await screen.findByRole('button', { name: /^watch runescape/i })).toHaveTextContent('Slow down');
+      expect(announce).toHaveBeenCalledWith(expect.stringContaining('too quickly'));
+    });
+
+    it('goes back to "+ Watch" after a few seconds', async () => {
+      refuse(429, 'Slow.');
+      await click();
+      const button = await screen.findByRole('button', { name: /^watch runescape/i });
+      expect(button).toHaveTextContent('Slow down');
+
+      await waitFor(() => expect(button).toHaveTextContent('+ Watch'), { timeout: 6000 });
+    }, 10000);
   });
 });

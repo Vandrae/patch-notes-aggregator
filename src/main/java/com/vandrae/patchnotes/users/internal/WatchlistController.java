@@ -35,13 +35,15 @@ class WatchlistController {
         return watchlist.list(Long.parseLong(jwt.getSubject()));
     }
 
-    /** 201 when newly added, 204 when it was already on the list. */
+    /** 201 when newly added, 204 when it was already on the list, 409 when the list is full. */
     @PutMapping("/{gameId}")
     ResponseEntity<Void> add(@AuthenticationPrincipal Jwt jwt, @PathVariable long gameId) {
         return switch (watchlist.watch(Long.parseLong(jwt.getSubject()), gameId)) {
             case ADDED -> ResponseEntity.status(HttpStatus.CREATED).build();
             case ALREADY_WATCHING -> ResponseEntity.noContent().build();
             case GAME_NOT_FOUND -> throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Game not found");
+            case LIMIT_REACHED -> throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Your list is full: you can follow up to " + watchlist.maxGames() + " games. Remove one to add another.");
         };
     }
 

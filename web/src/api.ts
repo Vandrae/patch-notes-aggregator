@@ -1,10 +1,13 @@
 export class ApiError extends Error {
   readonly status: number;
+  /** The server's own explanation (a problem document's `detail`), meant for people, when it sent one. */
+  readonly detail?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.detail = detail;
   }
 }
 
@@ -39,7 +42,9 @@ async function request<T>(method: string, path: string): Promise<T> {
   }
   const response = await fetch(path, { method, headers });
   if (!response.ok) {
-    throw new ApiError(response.status, `${method} ${path} failed with ${response.status}`);
+    const problem = (await response.json().catch(() => undefined)) as { detail?: unknown } | undefined;
+    const detail = typeof problem?.detail === 'string' ? problem.detail : undefined;
+    throw new ApiError(response.status, `${method} ${path} failed with ${response.status}`, detail);
   }
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
