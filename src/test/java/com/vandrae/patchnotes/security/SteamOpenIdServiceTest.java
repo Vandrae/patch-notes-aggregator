@@ -222,4 +222,48 @@ class SteamOpenIdServiceTest {
     void rejectsAnEmptyCallback() {
         assertThat(service.verify(Map.of(), STATE)).isEmpty();
     }
+
+    // ------------------------------------------------------------------ the global ceiling on checks sent to Steam
+
+    private SteamOpenIdService serviceWithSteamCheckBudget(int burst, java.util.concurrent.atomic.AtomicLong clock) {
+        RestClient.Builder builder = RestClient.builder();
+        steam = MockRestServiceServer.bindTo(builder).build();
+        var limits = new RateLimits(new RateLimitProperties(true, 1_000, null, null, null, new RateLimitProperties.Rule(burst, 1)),
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), clock::get);
+        return new SteamOpenIdService(new SteamLoginProperties(ENDPOINT, BASE), builder.build(), limits);
+    }
+
+    @Test
+    void onlyAFixedNumberOfChecksAreSentToSteamAndTheRestAreRefusedWithoutCallingIt() {
+        var clock = new java.util.concurrent.atomic.AtomicLong(1_000_000_000L);
+        service = serviceWithSteamCheckBudget(2, clock);
+        // three requests will reach Steam in total: two now and one after the budget refills. A fourth (for example one sent by the
+        // refused call) would exceed this and fail the test.
+        steam.expect(org.springframework.test.web.client.ExpectedCount.times(3), requestTo(ENDPOINT)).andRespond(withSuccess(INVALID, MediaType.TEXT_PLAIN));
+
+        assertThat(service.verify(validCallback(), STATE)).isEmpty(); // checked with Steam: not valid
+        assertThat(service.verify(validCallback(), STATE)).isEmpty();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.verify(validCallback(), STATE))
+                .isInstanceOf(SteamChecksBusyException.class);
+
+        clock.addAndGet(java.time.Duration.ofMinutes(2).toNanos()); // the budget refills with time
+        assertThat(service.verify(validCallback(), STATE)).isEmpty();
+        steam.verify();
+    }
+
+    @Test
+    void responsesThatFailTheCheapLocalChecksNeverUseUpTheSteamBudget() {
+        var clock = new java.util.concurrent.atomic.AtomicLong(1_000_000_000L);
+        service = serviceWithSteamCheckBudget(1, clock);
+
+        for (int i = 0; i < 50; i++) { // forged, and rejected on their own: no call to Steam, nothing spent
+            Map<String, String> forged = validCallback();
+            forged.put("openid.op_endpoint", "https://evil.test/openid/login");
+            assertThat(service.verify(forged, STATE)).isEmpty();
+        }
+
+        steamSays(VALID); // the one real check in the budget is still there
+        assertThat(service.verify(validCallback(), STATE)).contains(STEAM_ID);
+        steam.verify();
+    }
 }

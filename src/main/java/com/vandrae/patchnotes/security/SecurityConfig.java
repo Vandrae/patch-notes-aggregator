@@ -57,7 +57,7 @@ class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, TokenService tokens, SessionCookies cookies, JwtProperties jwt,
-                                    JwtDecoder jwtDecoder, SteamLoginProperties login) throws Exception {
+                                    JwtDecoder jwtDecoder, SteamLoginProperties login, RateLimits rateLimits) throws Exception {
         CookieCsrfTokenRepository csrfTokens = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfTokens.setCookieCustomizer(cookie -> cookie.sameSite("Lax").secure(login.secureCookies()));
         http
@@ -88,7 +88,9 @@ class SecurityConfig {
                         .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
                 .addFilterAfter(new CookieSessionFilter(jwtDecoder), BearerTokenAuthenticationFilter.class)
-                .addFilterAfter(new SessionRenewalFilter(tokens, cookies, jwt), CookieSessionFilter.class);
+                .addFilterAfter(new SessionRenewalFilter(tokens, cookies, jwt), CookieSessionFilter.class)
+                // after authentication, so the watch limit can be per user
+                .addFilterAfter(new RateLimitFilter(rateLimits), SessionRenewalFilter.class);
         return http.build();
     }
 

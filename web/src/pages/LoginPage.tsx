@@ -23,7 +23,9 @@ export function LoginPage() {
 
         {params.get('error') && (
           <p className="notice notice-error" role="alert">
-            Sign-in with Steam didn't complete. Please try again.
+            {params.get('error') === 'rate-limited'
+              ? 'Too many sign-in attempts. Please wait a minute and try again.'
+              : "Sign-in with Steam didn't complete. Please try again."}
           </p>
         )}
 

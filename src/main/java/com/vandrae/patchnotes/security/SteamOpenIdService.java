@@ -51,17 +51,23 @@ class SteamOpenIdService {
 
     private final SteamLoginProperties props;
     private final RestClient rest;
+    private final RateLimits rateLimits;
     /** Nonces already accepted. Steam also rejects replays; this is a second line of defence that costs nothing. */
     private final Map<String, Instant> seenNonces = new ConcurrentHashMap<>();
 
     @Autowired
-    SteamOpenIdService(SteamLoginProperties props) {
-        this(props, defaultRestClient());
+    SteamOpenIdService(SteamLoginProperties props, RateLimits rateLimits) {
+        this(props, defaultRestClient(), rateLimits);
     }
 
     SteamOpenIdService(SteamLoginProperties props, RestClient rest) {
+        this(props, rest, RateLimits.unlimited());
+    }
+
+    SteamOpenIdService(SteamLoginProperties props, RestClient rest, RateLimits rateLimits) {
         this.props = props;
         this.rest = rest;
+        this.rateLimits = rateLimits;
     }
 
     private static RestClient defaultRestClient() {
@@ -92,10 +98,19 @@ class SteamOpenIdService {
      * @param params the callback's query parameters (first value of each)
      * @param state  the value we stored in the browser's cookie when the login started
      * @return the verified SteamID64, or empty if anything about the response is not trustworthy
+     * @throws SteamChecksBusyException if the response looks plausible but too many checks are already going to Steam
      */
     Optional<Long> verify(Map<String, String> params, String state) {
         Optional<Long> steamId = checkLocally(params, state);
-        if (steamId.isEmpty() || !steamConfirms(params)) {
+        if (steamId.isEmpty()) {
+            return Optional.empty();
+        }
+        // The local checks are cheap, and anybody can pass them with a forged response. Only from here on does a request
+        // cost a call to Steam, so this is where the global ceiling on those calls applies.
+        if (!rateLimits.allowSteamCheck()) {
+            throw new SteamChecksBusyException();
+        }
+        if (!steamConfirms(params)) {
             return Optional.empty();
         }
         // only claim the nonce once Steam has vouched for the response

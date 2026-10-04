@@ -31,8 +31,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -152,6 +154,20 @@ class SteamLoginFlowTest {
                 .andExpect(status().isFound()).andReturn();
 
         assertThat(result.getResponse().getCookie("XSRF-TOKEN")).isNull();
+    }
+
+    @Test
+    void whenTooManyChecksAreGoingToSteamTheBrowserIsSentBackWithAMessageAndNoSession() throws Exception {
+        doThrow(new SteamChecksBusyException()).when(openId).verify(any(), any());
+
+        MvcResult result = mvc.perform(get("/api/auth/steam/callback").param("state", "busy1")
+                        .cookie(new Cookie(SessionCookies.LOGIN_STATE, "busy1")))
+                .andExpect(status().isFound())
+                .andExpect(header().string(HttpHeaders.LOCATION, SteamLoginController.RATE_LIMITED_REDIRECT))
+                .andReturn();
+
+        assertThat(result.getResponse().getCookie(SessionCookies.SESSION)).isNull();
+        verify(profiles, never()).getPlayer(anyLong());
     }
 
     @Test

@@ -36,6 +36,9 @@ class SteamLoginController {
     private static final Logger log = LoggerFactory.getLogger(SteamLoginController.class);
     /** Where the app sends people when a login did not complete; its login screen shows the message. */
     static final String FAILURE_REDIRECT = "/login?error=steam";
+    /** Where people are sent when a sign-in limit has been reached (see {@link RateLimitFilter}). */
+    static final String RATE_LIMITED_REDIRECT = "/login?error=rate-limited";
+    static final String LOGIN_PATH = "/api/auth/steam/login";
 
     private final SecureRandom random = new SecureRandom();
     private final SteamOpenIdService openId;
@@ -78,7 +81,12 @@ class SteamLoginController {
                                   @CookieValue(name = SessionCookies.LOGIN_NEXT, required = false) String nextCookie) {
         boolean sameBrowser = state != null && stateCookie != null
                 && MessageDigest.isEqual(state.getBytes(StandardCharsets.UTF_8), stateCookie.getBytes(StandardCharsets.UTF_8));
-        Optional<Long> steamId = sameBrowser ? openId.verify(firstValues(request), state) : Optional.empty();
+        Optional<Long> steamId;
+        try {
+            steamId = sameBrowser ? openId.verify(firstValues(request), state) : Optional.empty();
+        } catch (SteamChecksBusyException e) {
+            return redirect(RATE_LIMITED_REDIRECT, null); // too many checks are going to Steam right now; try again shortly
+        }
         if (steamId.isEmpty()) {
             return redirect(FAILURE_REDIRECT, null);
         }

@@ -17,6 +17,13 @@ app:
   security:
     jwt:
       secret: test-secret-test-secret-test-secret-1234
+    rate-limit:
+      # The tests call these endpoints far more often than any person would, all from one address. Limits that real
+      # traffic is held to would get in their way; the rate-limit tests set small ones of their own.
+      login: { burst: 100000, per-minute: 100000 }
+      callback: { burst: 100000, per-minute: 100000 }
+      watch: { burst: 100000, per-minute: 100000 }
+      steam-checks: { burst: 100000, per-minute: 100000 }
   steam:
     api-key: "" # likewise: tests never use a real key, whatever is in .env
     retry-delay: 1ms
