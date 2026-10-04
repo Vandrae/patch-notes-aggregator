@@ -1,8 +1,13 @@
-# The whole app as containers: the Patch Notes app plus its MySQL database.
+# The whole app as containers: Caddy (the https front door), the Patch Notes app, and its MySQL database.
 #
 #   cp .env.example .env      # then fill in the secrets (compose reads .env automatically)
 #   docker compose -f compose.prod.yaml up -d --build
 #   docker compose -f compose.prod.yaml logs -f app
+#
+# Only Caddy publishes ports (80 and 443). The app and the database are reachable only on the private compose network,
+# so every visitor comes through Caddy, which is what makes the visitor's address (and so the rate limits) trustworthy.
+# Memory limits are sized for a 2 GB machine (an EC2 t3.small): about 0.8 GB for the app, 0.5 GB for the database and
+# 0.1 GB for Caddy, which leaves the rest for the operating system.
 #
 # (compose.yaml, next to this file, is the development one: just a MySQL with its port open on your machine.)
 #
@@ -13,6 +18,10 @@ services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
+    mem_limit: 512m
+    # Trimmed to fit a small machine: a 128 MB cache for table data and no performance schema (which alone would take a
+    # few hundred MB), and room for 50 connections, far more than the app's pool ever opens.
+    command: ["--innodb-buffer-pool-size=128M", "--performance-schema=OFF", "--max-connections=50"]
     environment:
       MYSQL_DATABASE: patchnotes
       MYSQL_USER: patchnotes
@@ -35,26 +44,49 @@ services:
     # the name the built image gets; CI builds and tags it first, then runs compose with --no-build
     image: ${APP_IMAGE:-patch-notes-aggregator:local}
     restart: unless-stopped
+    # the JVM sizes its heap as 75% of this (see the Dockerfile), the rest is for its own overhead
+    mem_limit: 800m
     depends_on:
       mysql:
         condition: service_healthy   # wait until MySQL answers, not merely until its container exists
     environment:
       # prod: security and shutdown settings for production (see application-prod.yml); mysql: the database
       SPRING_PROFILES_ACTIVE: prod,mysql
-      # With nothing in front of the app (as here), do not trust X-Forwarded-* headers from clients. If you put a TLS
-      # reverse proxy in front, set this to "framework" so the app knows requests were https and sends HSTS.
-      FORWARD_HEADERS_STRATEGY: ${FORWARD_HEADERS_STRATEGY:-none}
+      # Caddy is in front, so believe its X-Forwarded-* headers (only from private-network addresses, see
+      # application-prod.yml). Never publish this container's port: then anything could claim to be a proxy.
+      FORWARD_HEADERS_STRATEGY: native
       MYSQL_URL: jdbc:mysql://mysql:3306/patchnotes?rewriteBatchedStatements=true   # "mysql" = the service name above
       MYSQL_USER: patchnotes
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (32+ characters)}
       STEAM_API_KEY: ${STEAM_API_KEY:-}
       # where browsers reach the app; Steam sends people back here after login. The prod profile REFUSES to start unless
-      # this is an https address (http://localhost is allowed so you can try this stack on your own machine); https also
-      # turns on the Secure flag for the session cookie.
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      # this is an https address (https://localhost is Caddy's own certificate on your machine), and https also turns on
+      # the Secure flag for the session cookie. With a real domain set PUBLIC_BASE_URL=https://<DOMAIN> in .env.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://localhost}
+    # `expose` only documents the port for other containers; unlike `ports` it opens nothing on the host
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    mem_limit: 128m
+    depends_on:
+      app:
+        condition: service_healthy   # the app's own health check (from the Dockerfile)
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
     ports:
-      - "8080:8080"
+      - "80:80"     # also needed for the certificate challenge and to redirect http to https
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # the certificates: keep them, or every restart asks Let's Encrypt for new ones and hits its rate limits
+      - caddy-data:/data
+      - caddy-config:/config
 
 volumes:
   mysql-data:
+  caddy-data:
+  caddy-config:

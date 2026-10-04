@@ -91,7 +91,7 @@ jobs:
       - run: npm run build
 
   docker:
-    name: Docker image and full-stack smoke test (app + MySQL)
+    name: Docker image and full-stack smoke test (Caddy + app + MySQL)
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     env:
@@ -113,28 +113,44 @@ jobs:
           cache-from: type=gha  # reuse layers from earlier runs
           cache-to: type=gha,mode=max
 
-      - name: Start the stack (app + MySQL) and wait until both are healthy
+      - name: Start the stack (Caddy + app + MySQL) and wait until it is healthy
         run: docker compose -f compose.prod.yaml up -d --no-build --wait --wait-timeout 300
 
       - name: Smoke test
         run: |
           set -euo pipefail
-          base=http://localhost:8080
-          status() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
+          # everything goes through Caddy, as a visitor's browser would; -k because Caddy signs its own certificate for localhost
+          base=https://localhost
+          status() { curl -sk -o /dev/null -w '%{http_code}' "$1"; }
 
-          echo "health";               curl -fsS $base/actuator/health; echo
-          echo "web app is served";    curl -fsS $base/ | grep -q 'id="root"'
+          echo "health";               curl -fsSk $base/actuator/health; echo
+          echo "web app is served";    curl -fsSk $base/ | grep -q 'id="root"'
           echo "client route works";   test "$(status $base/feed)" = 200
           echo "api needs sign-in";    test "$(status $base/api/me)" = 401
-          echo "security headers are sent"
-          headers=$(curl -s -D - -o /dev/null $base/feed)
+          echo "http is sent to https"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost/feed)" = 308
+          echo "the app's own port is not reachable from outside"
+          if curl -s -o /dev/null --max-time 3 http://localhost:8080/actuator/health; then echo "port 8080 is published"; exit 1; fi
+          echo "security headers are sent, and the app knows the request was https (HSTS)"
+          headers=$(curl -sk -D - -o /dev/null $base/feed)
           echo "$headers" | grep -qi "^content-security-policy: default-src 'self'"
           echo "$headers" | grep -qi "^referrer-policy: no-referrer"
           echo "$headers" | grep -qi "^cross-origin-opener-policy: same-origin"
+          echo "$headers" | grep -qi "^strict-transport-security: max-age="
           echo "the production profile is active"
           docker compose -f compose.prod.yaml logs --no-color app | grep -E 'profiles are active: "prod", "mysql"'
           echo "migrations ran on MySQL"
           docker compose -f compose.prod.yaml logs --no-color app | grep -E 'Successfully applied [0-9]+ migrations?'
+          echo "memory limits are in force"
+          docker inspect --format '{{.Name}} {{.HostConfig.Memory}}' $(docker compose -f compose.prod.yaml ps -q) | tee /dev/stderr | awk '$2 == 0 { bad = 1 } END { exit bad }'
+          echo "starting sign-in too often is refused, with a friendly redirect (last: it uses up this machine's allowance)"
+          refused=0
+          for i in $(seq 1 40); do
+            location=$(curl -sk -o /dev/null -w '%{redirect_url}' $base/api/auth/steam/login)
+            case "$location" in *"/login?error=rate-limited") refused=$((refused + 1));; esac
+          done
+          echo "refused $refused of 40"
+          test "$refused" -ge 10
 
       - name: Show the logs if something failed
         if: failure()

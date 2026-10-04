@@ -108,7 +108,7 @@ class ProductionProfileTest {
             assertThat(env.getProperty("server.shutdown")).isEqualTo("graceful");
             assertThat(env.getProperty("server.error.include-stacktrace")).isEqualTo("never");
             assertThat(env.getProperty("server.error.include-message")).isEqualTo("never");
-            assertThat(env.getProperty("server.forward-headers-strategy")).isEqualTo("framework");
+            assertThat(env.getProperty("server.forward-headers-strategy")).isEqualTo("native");
             assertThat(env.getProperty("spring.task.scheduling.shutdown.await-termination")).isEqualTo("true");
             assertThat(env.getProperty("management.endpoints.web.exposure.include")).isEqualTo("health");
             assertThat(context.getBean(SteamLoginProperties.class).secureCookies()).isTrue();

@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class WatchlistLimitTest {
 
     private static final AtomicLong STEAM_IDS = new AtomicLong(76561198700000000L);
-    private static final AtomicLong APP_IDS = new AtomicLong(970_000_000L);
+    private static final AtomicLong APP_IDS = new AtomicLong(995_000_000L);
 
     @Autowired MockMvc mvc;
     @Autowired UserAccounts users;

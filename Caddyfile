@@ -1,0 +1,17 @@
+# The front door in compose.prod.yaml: Caddy gets a free TLS certificate for $DOMAIN from Let's Encrypt on its own, renews
+# it, redirects http to https, and passes requests to the app over the private compose network.
+#
+# DOMAIN is your site's address (set in .env). With no DOMAIN, Caddy serves "localhost" with a certificate from its own
+# local authority, which is how CI and `docker compose up` on your machine work (browsers will warn about it).
+{
+	# HTTP/3 needs UDP port 443 open as well; plain https (HTTP/1.1 and HTTP/2) is enough here
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$DOMAIN:localhost} {
+	# reverse_proxy tells the app who the visitor is (X-Forwarded-For) and that the request was https (X-Forwarded-Proto),
+	# and throws away any such headers a visitor sent themselves. The app compresses its own responses.
+	reverse_proxy app:8080
+}

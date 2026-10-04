@@ -7,10 +7,15 @@
 server:
   # Stop accepting new requests on shutdown, but let running ones finish.
   shutdown: graceful
-  # Behind a reverse proxy or load balancer that terminates TLS, believe its X-Forwarded-* headers so the app knows the
-  # request was https (that is what makes Strict-Transport-Security be sent). Set FORWARD_HEADERS_STRATEGY=none if
-  # clients can reach the app directly, without a proxy, because then they could forge those headers.
-  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+  # Behind a reverse proxy that terminates TLS (Caddy, in compose.prod.yaml), believe its X-Forwarded-* headers, so the app
+  # knows the request was https (that is what makes Strict-Transport-Security be sent) and who the visitor really is (that
+  # is what the rate limits are keyed on). "native" is Tomcat's own handling: it only believes those headers when the
+  # connection comes from a private-network address (loopback, 10/8, 172.16/12, 192.168/16: the proxy on the Docker network
+  # or in the same VPC) and reads the visitor from the right of X-Forwarded-For, where only the proxy writes, so a header a
+  # visitor sends cannot choose their own address. A connection from anywhere else has its headers ignored. Even so, never
+  # publish the app's own port: anything that reaches it from a private address is believed. Set
+  # FORWARD_HEADERS_STRATEGY=none when nothing sits in front of the app.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
   # Error responses never carry exception messages, stack traces or validation details.
   error:
     include-message: never
