@@ -126,8 +126,26 @@ connections only from the app's own origin, images also from Steam's CDN, no inl
 no caching of API responses, and `Strict-Transport-Security` for one year on https requests). The policy was checked in a
 browser against every page (feed, Discover, watchlist, account) with no violations.
 
+**Browser tests** (`e2e/`, [Playwright](https://playwright.dev) driving Chromium) run the *packaged* app, the same jar that ships,
+through a real browser. Steam is replaced by a small fake (`e2e/fake-steam.mjs`) that serves the OpenID sign-in page, answers
+`check_authentication` the way Steam does (it vouches only for a response it issued, and only once) and serves a news feed, so
+the tests are offline and repeatable. They cover the whole journey: being sent to sign in and coming back, signing in through
+Steam, finding a game, following it, its patch notes appearing in the feed (and press coverage not), the session surviving a
+reload, unfollowing, signing out, and deleting the account; and the security-relevant paths: a sign-in response that was not
+asked for, a genuine one replayed after signing out, a `next` that points at another site, API calls without a session or
+without the anti-forgery header, and the sign-in rate limit with its on-screen message. To run them locally:
+
+```bash
+./mvnw -DskipTests package                    # builds the jar the tests start
+cd e2e && npm install && npx playwright install chromium
+npx playwright test                           # starts the fake Steam (port 9099) and the app (port 8089) itself
+```
+
+They use their own in-memory database and nothing in `.env`. The last test uses up the sign-in allowance on purpose, so it is
+named to run last. On failure CI keeps a report with traces and screenshots as a build artifact.
+
 **Continuous integration** (`.github/workflows/ci.yml`, on every push): the backend tests on JDK 21 (including the real-MySQL tests above), the frontend typecheck, tests
-and build on Node 24, then the Docker image is built and the production compose stack is started against a real MySQL 8.4
+and build on Node 24, the browser tests above, then the Docker image is built and the production compose stack is started against a real MySQL 8.4
 and smoke-tested through Caddy (health, the web app, a client-side route, the API rejecting anonymous calls, http being redirected
 to https, the app's own port not being reachable, the security headers including HSTS, the memory limits being in force, the
 `prod` profile being active, Flyway applying its migrations on MySQL, and sign-in being rate limited). A failing backend test is shown as an annotation on the run page.
