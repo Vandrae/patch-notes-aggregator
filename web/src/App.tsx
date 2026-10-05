@@ -6,12 +6,14 @@ import { DiscoverPage } from './pages/DiscoverPage';
 import { FeedPage } from './pages/FeedPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 import { WatchlistPage } from './pages/WatchlistPage';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         element={
           <RequireAuth>

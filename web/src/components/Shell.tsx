@@ -45,7 +45,11 @@ export function Shell() {
         <Outlet />
       </main>
       <footer className="footer">
-        Patch notes come from each game's official posts on Steam. Powered by Steam. Not affiliated with Valve.
+        Patch notes come from each game's official posts on Steam. Powered by{' '}
+        <a href="https://store.steampowered.com/" target="_blank" rel="noopener noreferrer">
+          Steam
+        </a>
+        . Not affiliated with Valve. <Link to="/privacy">Privacy</Link>
       </footer>
       <div className="visually-hidden" role="status" aria-live="polite">
         {announcement}

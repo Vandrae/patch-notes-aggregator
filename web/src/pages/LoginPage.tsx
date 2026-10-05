@@ -1,4 +1,4 @@
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { safeNext, steamLoginUrl } from '../api';
 import { useDocumentTitle } from '../hooks';
 import { useMe } from '../queries';
@@ -34,7 +34,8 @@ export function LoginPage() {
           Sign in through Steam
         </a>
         <p className="fine-print">
-          You sign in on Steam's own page. We only receive your public Steam name and avatar: no password, no email.
+          You sign in on Steam's own page. We only receive your public Steam name and avatar: no password, no email.{' '}
+          <Link to="/privacy">Privacy</Link>
         </p>
       </div>
     </main>

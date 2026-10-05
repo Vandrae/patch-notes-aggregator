@@ -799,3 +799,43 @@ a.row-title:hover {
     flex: 1 1 140px;
   }
 }
+
+/* ---------- privacy / legal text ---------- */
+.legal {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.legal .brand {
+  display: inline-flex;
+  margin-bottom: 24px;
+}
+.legal h2 {
+  margin-top: 28px;
+  font-size: 1.1rem;
+}
+.legal p,
+.legal ul {
+  margin-top: 8px;
+}
+.legal ul {
+  padding-left: 1.2em;
+}
+.legal li + li {
+  margin-top: 6px;
+}
+.legal .lead {
+  margin-bottom: 0;
+}
+.footer a {
+  color: inherit;
+  text-decoration: underline;
+}
+.legal a,
+.fine-print a {
+  color: var(--accent);
+}
+.legal a:hover,
+.fine-print a:hover {
+  color: var(--accent-hover);
+}
