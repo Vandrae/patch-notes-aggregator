@@ -14,4 +14,11 @@ public record JwtProperties(
         String secret,
         @DefaultValue("patch-notes-aggregator") String issuer,
         @DefaultValue("7d") Duration ttl) {
+
+    /** A record prints every field; this one must never print the signing secret, however carelessly it gets logged. */
+    @Override
+    public String toString() {
+        return "JwtProperties[secret=" + (secret == null || secret.isBlank() ? "<not set>" : "<set>")
+                + ", issuer=" + issuer + ", ttl=" + ttl + "]";
+    }
 }

@@ -26,4 +26,11 @@ public record SteamProperties(
     public boolean hasApiKey() {
         return apiKey != null && !apiKey.isBlank();
     }
+
+    /** A record prints every field; this one must never print the key, however carelessly it gets logged. */
+    @Override
+    public String toString() {
+        return "SteamProperties[baseUrl=" + baseUrl + ", apiKey=" + (hasApiKey() ? "<set>" : "<not set>")
+                + ", newsCount=" + newsCount + ", maxRetries=" + maxRetries + "]";
+    }
 }

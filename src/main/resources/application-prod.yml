@@ -22,6 +22,11 @@ server:
     include-stacktrace: never
     include-binding-errors: never
     include-exception: false
+  tomcat:
+    accesslog:
+      # No request log. A URL can carry secrets (the sign-in callback has Steam's one-time signature in its query string), so
+      # nothing that records URLs is switched on by accident. If you add one later, leave the query out of /api/auth/**.
+      enabled: false
   compression:
     enabled: true
 
