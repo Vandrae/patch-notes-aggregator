@@ -351,9 +351,11 @@ in `game_fetch_state`, and the poller wakes every 30 seconds to take whichever g
   Retrying a 429 immediately would only count against the limit, so the news client reports it instead of retrying.
 - **On demand:** starting to watch a game still fetches it at once, and that fetch sets the game's schedule too, so it is not
   polled again straight away. Games nobody watches lose their schedule row and are never polled.
-- **Metrics** (Micrometer; not exposed over HTTP yet): `patchnotes.fetch.polls` by outcome, `patchnotes.fetch.articles`,
+- **Metrics** (Micrometer; deliberately not exposed over HTTP, since there is no one to look at a dashboard and every public route is surface to defend): `patchnotes.fetch.polls` by outcome, `patchnotes.fetch.articles`,
   `patchnotes.fetch.tracked`, `patchnotes.fetch.due` and `patchnotes.fetch.lag.seconds` (how long the most overdue game has
-  waited; a number that keeps growing means the poller cannot keep up).
+  waited; a number that keeps growing means the poller cannot keep up). Decided: they stay unexposed. The per-tick "Poll tick" log
+  line, Steam throttling warnings and the rate-limit summary line are the signals to watch in `docker compose logs`. If you ever want
+  live metrics, a management port reachable only over SSH is the way; the security rules would need a small change for it.
 - **Tuning** is under `app.fetch` in `application.yml`. The 24-hour cap comes from one method, `PollSchedule.maxIntervalFor`,
   which is where a slower tier (say weekly checks for games with no patch note in a year) will plug in.
 
