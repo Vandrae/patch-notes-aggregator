@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { filterQuery, type Filters, NO_FILTERS } from './filters';
-import type { CatalogStatus, FeedPage, FilterOptions, Game, GamesPage, User, WatchlistItem } from './types';
+import type { CatalogStatus, FeedPage, FilterOptions, Game, GameActivity, GamesPage, User, WatchlistItem } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -10,6 +10,9 @@ export const keys = {
   games: (q: string, filters: Filters) => ['games', q, filters] as const,
   filterOptions: ['filter-options'] as const,
   catalogStatus: ['catalog-status'] as const,
+  game: (id: number) => ['game', id] as const,
+  gameActivity: (id: number) => ['game-activity', id] as const,
+  gamePatchNotes: (id: number) => ['game-patch-notes', id] as const,
 };
 
 /** 401 means "not signed in": that is an answer, not an error, so it is never retried. */
@@ -37,6 +40,46 @@ export function useFeed(gameId?: number, filters: Filters = NO_FILTERS) {
     queryFn: ({ pageParam }) =>
       api.get<FeedPage>(`/api/feed?size=10&page=${pageParam}${gameId ? `&gameId=${gameId}` : ''}${filterQuery(filters)}`),
     getNextPageParam: (last) => (last.page + 1 < last.totalPages ? last.page + 1 : undefined),
+    refetchInterval: (query) => {
+      const waiting = query.state.data?.pages[0]?.emptyState?.reason === 'NO_ARTICLES_YET';
+      return waiting && query.state.dataUpdateCount < EMPTY_FEED_MAX_POLLS ? EMPTY_FEED_POLL_MS : false;
+    },
+  });
+}
+
+/** A game that is not in the catalog is a definite answer (404), so it is not retried. */
+function retryUnlessNotFound(failures: number, error: Error): boolean {
+  return !(error instanceof ApiError && error.status === 404) && failures < 2;
+}
+
+export function useGame(id: number) {
+  return useQuery({
+    queryKey: keys.game(id),
+    queryFn: () => api.get<Game>(`/api/games/${id}`),
+    retry: retryUnlessNotFound,
+    enabled: id > 0, // 0 stands for "the address was not a game id": nothing to ask
+  });
+}
+
+export function useGameActivity(id: number) {
+  return useQuery({
+    queryKey: keys.gameActivity(id),
+    queryFn: () => api.get<GameActivity>(`/api/games/${id}/activity`),
+    retry: retryUnlessNotFound,
+  });
+}
+
+/**
+ * A game's patch-note history, newest first. Right after somebody follows a game its first patch notes arrive a few
+ * seconds later, so a followed game with nothing yet re-checks briefly, as the feed does.
+ */
+export function useGamePatchNotes(id: number) {
+  return useInfiniteQuery({
+    queryKey: keys.gamePatchNotes(id),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => api.get<FeedPage>(`/api/games/${id}/patch-notes?size=10&page=${pageParam}`),
+    getNextPageParam: (last) => (last.page + 1 < last.totalPages ? last.page + 1 : undefined),
+    retry: retryUnlessNotFound,
     refetchInterval: (query) => {
       const waiting = query.state.data?.pages[0]?.emptyState?.reason === 'NO_ARTICLES_YET';
       return waiting && query.state.dataUpdateCount < EMPTY_FEED_MAX_POLLS ? EMPTY_FEED_POLL_MS : false;
@@ -108,6 +151,9 @@ export function useToggleWatch() {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: keys.watchlist });
       void queryClient.invalidateQueries({ queryKey: ['feed'] });
+      // a game's own page shows how many follow it and, once somebody does, its patch notes
+      void queryClient.invalidateQueries({ queryKey: ['game-activity'] });
+      void queryClient.invalidateQueries({ queryKey: ['game-patch-notes'] });
     },
   });
 }

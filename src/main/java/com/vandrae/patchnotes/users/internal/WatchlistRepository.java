@@ -11,6 +11,8 @@ public interface WatchlistRepository extends JpaRepository<WatchlistEntry, Long>
 
     long countByUserId(Long userId);
 
+    long countByGameId(Long gameId);
+
     List<WatchlistEntry> findByUserIdOrderByAddedAtDesc(Long userId);
 
     long deleteByUserIdAndGameId(Long userId, Long gameId);

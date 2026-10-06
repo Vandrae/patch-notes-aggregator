@@ -65,9 +65,12 @@ class PatchNotesFlowTest {
 
     @Test
     void theWebAppShellIsServedAtClientRoutesButUnknownApiRoutesStayNotFound() throws Exception {
-        for (String route : List.of("/", "/feed", "/discover", "/watchlist", "/account", "/login", "/privacy", "/some-unknown-page")) {
+        for (String route : List.of("/", "/feed", "/discover", "/watchlist", "/account", "/login", "/privacy", "/games/42", "/some-unknown-page")) {
             mvc.perform(get(route)).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
         }
+        // only a numeric id is a game page; anything else under /games, or deeper, is not a route of the app
+        mvc.perform(get("/games/not-a-number")).andExpect(status().isNotFound());
+        mvc.perform(get("/games/42/extra")).andExpect(status().isNotFound());
         // an API typo must not come back as an HTML page with a 200
         mvc.perform(get("/api/does-not-exist").with(signedIn())).andExpect(status().isNotFound());
         mvc.perform(get("/api/does-not-exist")).andExpect(status().isUnauthorized());

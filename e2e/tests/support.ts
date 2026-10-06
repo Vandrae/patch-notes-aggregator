@@ -21,3 +21,8 @@ export async function signIn(page: Page, steamId: string = newSteamId(), start =
   await expect(page.getByRole('heading', { name: 'Your patch notes' })).toBeVisible();
   return steamId;
 }
+
+/** A link in the main navigation bar (not, say, a "Show in feed" link inside a page). */
+export function navLink(page: Page, name: 'Feed' | 'Discover' | 'Watchlist') {
+  return page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true });
+}

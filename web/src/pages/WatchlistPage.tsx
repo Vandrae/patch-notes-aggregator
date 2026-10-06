@@ -41,13 +41,16 @@ export function WatchlistPage() {
             <li key={game.id} className="row row-game">
               <GameThumb game={game} />
               <div className="row-main">
-                <Link className="row-title" to={`/feed?game=${game.id}`}>
+                <Link className="row-title" to={`/games/${game.id}`}>
                   {game.name}
                 </Link>
                 {game.shortDescription && <p className="row-desc">{game.shortDescription}</p>}
                 <GameBadges game={game} />
                 <GameMeta game={game} />
-                <span className="muted small">Following since {fullDate(addedAt)}</span>
+                <span className="muted small">
+                  Following since {fullDate(addedAt)} ·{' '}
+                  <Link to={`/feed?game=${game.id}`}>Show in feed</Link>
+                </span>
               </div>
               <WatchButton game={game} />
             </li>

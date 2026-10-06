@@ -1,18 +1,26 @@
+import { Link } from 'react-router-dom';
 import { fullDate, safeExternalUrl, timeAgo } from '../format';
 import type { FeedItem } from '../types';
 import { GameIcon } from './GameIcon';
 
-export function ArticleCard({ item }: { item: FeedItem }) {
+/** @param showGame false on a game's own page, where every card is that game and naming it again would be noise */
+export function ArticleCard({ item, showGame = true }: { item: FeedItem; showGame?: boolean }) {
   const href = safeExternalUrl(item.url);
   return (
     <article className="card article">
       <div className="article-head">
-        <GameIcon name={item.gameName} iconUrl={item.gameIconUrl} size={32} />
+        {showGame && <GameIcon name={item.gameName} iconUrl={item.gameIconUrl} size={32} />}
         <div className="article-meta">
-          <span className="article-game">{item.gameName}</span>
-          <span className="dot" aria-hidden="true">
-            ·
-          </span>
+          {showGame && (
+            <>
+              <Link className="article-game" to={`/games/${item.gameId}`}>
+                {item.gameName}
+              </Link>
+              <span className="dot" aria-hidden="true">
+                ·
+              </span>
+            </>
+          )}
           <time dateTime={item.publishedAt} title={fullDate(item.publishedAt)}>
             {timeAgo(item.publishedAt)}
           </time>

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -92,6 +93,46 @@ class FeedQueries {
                 })
                 .toList();
         return new FeedResponse(items, safePage, safeSize, result.getTotalElements(), result.getTotalPages(), null);
+    }
+
+    /**
+     * One game's stored patch notes, newest first, whoever is asking.
+     *
+     * @return empty when the game is not in the catalog
+     */
+    Optional<FeedResponse> historyFor(long gameId, int page, int size) {
+        Optional<GameSummary> found = catalog.findById(gameId);
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+        GameSummary game = found.get();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+        var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.desc("id")));
+        Page<Article> result = articles.findByGameId(gameId, pageable);
+
+        if (result.getTotalElements() == 0) {
+            // Only followed games are fetched, so "nothing yet" has two very different reasons
+            return Optional.of(watchlist.countWatchers(gameId) == 0
+                    ? empty(safePage, safeSize, EmptyReason.NOT_TRACKED,
+                            "Nobody follows this game yet, so its patch notes haven't been fetched. Follow it to start tracking them.")
+                    : empty(safePage, safeSize, EmptyReason.NO_ARTICLES_YET,
+                            "No patch notes yet. We'll show them here as soon as they're published."));
+        }
+        List<FeedItem> items = result.getContent().stream()
+                .map(a -> new FeedItem(a.getId(), a.getGameId(), game.name(), game.iconUrl(),
+                        a.getTitle(), a.getUrl(), a.getSummary(), a.getType(), a.getPublishedAt()))
+                .toList();
+        return Optional.of(new FeedResponse(items, safePage, safeSize, result.getTotalElements(), result.getTotalPages(), null));
+    }
+
+    /** @return empty when the game is not in the catalog */
+    Optional<GameActivity> activityFor(long gameId) {
+        if (!catalog.exists(gameId)) {
+            return Optional.empty();
+        }
+        return Optional.of(new GameActivity(watchlist.countWatchers(gameId), articles.latestPublishedAt(gameId),
+                articles.countByGameId(gameId)));
     }
 
     private static FeedResponse empty(int page, int size, EmptyReason reason, String message) {

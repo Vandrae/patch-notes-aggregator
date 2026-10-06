@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { FilterBar } from '../components/FilterBar';
 import { EmptyState, ErrorState, SkeletonList } from '../components/States';
@@ -109,7 +110,9 @@ export function DiscoverPage() {
               <li key={game.id} className="row row-game">
                 <GameThumb game={game} />
                 <div className="row-main">
-                  <span className="row-title">{game.name}</span>
+                  <Link className="row-title" to={`/games/${game.id}`}>
+                    {game.name}
+                  </Link>
                   {game.shortDescription && <p className="row-desc">{game.shortDescription}</p>}
                   <GameBadges game={game} />
                   <GameMeta game={game} />

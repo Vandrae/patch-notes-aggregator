@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.GetMapping;
  *
  * <p>Only single-segment paths without a dot are forwarded. That deliberately leaves out {@code /api/...} (an unknown
  * API route must stay a 404, not turn into an HTML page), static files such as {@code /favicon.svg}, and
- * {@code /assets/...}. If the app gains nested routes, list them here explicitly.
+ * {@code /assets/...}. Nested routes are listed here explicitly: a game's page, {@code /games/42}.
  */
 @Controller
 class SpaController {
 
-    @GetMapping({"/", "/{route:[^.]*}"})
+    @GetMapping({"/", "/{route:[^.]*}", "/games/{id:[0-9]+}"})
     String app() {
         return "forward:/index.html";
     }

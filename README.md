@@ -153,7 +153,7 @@ to https, the app's own port not being reachable, the security headers including
 
 **Signing in:** there are no passwords. Open <http://localhost:8080>, click **Sign in through Steam**, sign in on Steam's own
 page, and you are sent back signed in (an HttpOnly session cookie). The app has a feed (with a per-game filter), game
-discovery with search and a one-click Watch (each patch note shows its game's Steam icon, falling back to an initials tile until the icon has been fetched), a watchlist, and an account page (sign out / delete account).
+discovery with search and a one-click Watch (each patch note shows its game's Steam icon, falling back to an initials tile until the icon has been fetched), a game page for each game (cover, how many follow it, its patch-note history; reached by clicking a game's name), a watchlist, and an account page (sign out / delete account).
 
 | Method | Route | Notes |
 |---|---|---|
@@ -163,6 +163,8 @@ discovery with search and a one-click Watch (each patch note shows its game's St
 | GET / DELETE | `/api/me` | who am I (401 = signed out) / delete my account and watchlist |
 | GET | `/api/games?q=&genre=&minRating=&age=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive); `genre` and `age` (ESRB, e.g. `TEEN`) are repeatable (any of), `minRating` is Steam's 1-9 review level |
 | GET | `/api/catalog/filters` | the genres, review ratings and age ratings the filters offer |
+| GET | `/api/games/{id}/patch-notes?page=&size=` | one game's stored patch notes, newest first, for any signed-in user (not limited to your watchlist); `emptyState` says why there are none: `NOT_TRACKED` (nobody follows the game, so it was never fetched) or `NO_ARTICLES_YET`; 404 for a game not in the catalog |
+| GET | `/api/games/{id}/activity` | how many people follow the game (a count, never who), when its newest patch notes came out, and how many there are |
 | GET | `/api/watchlist` | caller's watchlist |
 | PUT / DELETE | `/api/watchlist/{gameId}` | idempotent add (201 new / 204 already / 409 when the list is full) and remove; 429 when done too quickly (see Rate limits) |
 | GET | `/api/feed?page=&size=&gameId=&genre=&minRating=&age=` | patch notes for watched games, newest first; `gameId` narrows to one watched game, `genre`/`minRating`/`age` to watched games that match; `emptyState` explains an empty page |

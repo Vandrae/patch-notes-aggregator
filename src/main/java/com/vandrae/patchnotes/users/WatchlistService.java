@@ -31,6 +31,12 @@ public class WatchlistService {
         this.properties = properties;
     }
 
+    /** How many people follow a game: a count, never who. */
+    @Transactional(readOnly = true)
+    public long countWatchers(long gameId) {
+        return watchlist.countByGameId(gameId);
+    }
+
     /** The most games one person can follow. */
     public int maxGames() {
         return properties.maxGames();

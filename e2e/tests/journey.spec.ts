@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { fakeSteamCalls, signIn } from './support';
+import { fakeSteamCalls, navLink, signIn } from './support';
 
 const PATCH_TITLE = /1\.0\.0\.6 is now Live!/;
 
@@ -16,7 +16,7 @@ test('sign in, find a game, follow it, read its patch notes, then stop following
   expect((await fakeSteamCalls()).some((call) => call.kind === 'check-authentication' && call.valid === true)).toBe(true);
 
   // 3. find the game by name
-  await page.getByRole('link', { name: 'Discover' }).click();
+  await navLink(page, 'Discover').click();
   await page.getByRole('searchbox', { name: 'Search games' }).fill('dragonwilds');
   const row = page.getByRole('listitem').filter({ hasText: 'RuneScape: Dragonwilds' });
   await expect(row).toBeVisible();
@@ -24,11 +24,11 @@ test('sign in, find a game, follow it, read its patch notes, then stop following
   // 4. follow it: the button flips at once and the choice sticks
   await row.getByRole('button', { name: /^watch runescape/i }).click();
   await expect(row.getByRole('button', { name: /stop watching/i })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('link', { name: 'Watchlist' }).click();
+  await navLink(page, 'Watchlist').click();
   await expect(page.getByRole('listitem').filter({ hasText: 'RuneScape: Dragonwilds' })).toBeVisible();
 
   // 5. its patch notes arrive (fetched in the background after following) and press coverage does not
-  await page.getByRole('link', { name: 'Feed' }).click();
+  await navLink(page, 'Feed').click();
   await expect
     .poll(
       async () => {
@@ -50,9 +50,9 @@ test('sign in, find a game, follow it, read its patch notes, then stop following
   await expect(page.getByRole('link', { name: PATCH_TITLE })).toBeVisible();
 
   // 7. unfollowing empties the feed again
-  await page.getByRole('link', { name: 'Watchlist' }).click();
+  await navLink(page, 'Watchlist').click();
   await page.getByRole('button', { name: /stop watching runescape/i }).click();
-  await page.getByRole('link', { name: 'Feed' }).click();
+  await navLink(page, 'Feed').click();
   await expect(page.getByRole('heading', { name: 'Follow a game to get started' })).toBeVisible();
   await expect(page.getByRole('link', { name: PATCH_TITLE })).toHaveCount(0);
 });
@@ -70,7 +70,7 @@ test('signing out ends the session, and the app goes back to asking for sign-in'
 
 test('deleting the account removes it, and signing in again starts from nothing', async ({ page }) => {
   const steamId = await signIn(page);
-  await page.getByRole('link', { name: 'Discover' }).click();
+  await navLink(page, 'Discover').click();
   await page.getByRole('searchbox', { name: 'Search games' }).fill('dragonwilds');
   const row = page.getByRole('listitem').filter({ hasText: 'RuneScape: Dragonwilds' });
   await row.getByRole('button', { name: /^watch runescape/i }).click();
@@ -83,7 +83,7 @@ test('deleting the account removes it, and signing in again starts from nothing'
 
   // the same Steam user signing in again gets a brand-new, empty account
   await signIn(page, steamId);
-  await page.getByRole('link', { name: 'Watchlist' }).click();
+  await navLink(page, 'Watchlist').click();
   await expect(page.getByRole('heading', { name: 'Your watchlist' })).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'RuneScape: Dragonwilds' })).toHaveCount(0);
 });

@@ -33,7 +33,7 @@ public record FeedResponse(
     }
 
     public enum EmptyReason {
-        NO_WATCHLIST, NO_ARTICLES_YET, NO_MATCHING_GAMES
+        NO_WATCHLIST, NO_ARTICLES_YET, NO_MATCHING_GAMES, NOT_TRACKED
     }
 
     public record EmptyState(EmptyReason reason, String message) {

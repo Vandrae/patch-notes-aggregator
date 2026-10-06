@@ -60,7 +60,8 @@ export interface FeedItem {
   publishedAt: string;
 }
 
-export type EmptyReason = 'NO_WATCHLIST' | 'NO_ARTICLES_YET' | 'NO_MATCHING_GAMES';
+/** NOT_TRACKED: only on a game's own page, when nobody follows the game, so its patch notes were never fetched. */
+export type EmptyReason = 'NO_WATCHLIST' | 'NO_ARTICLES_YET' | 'NO_MATCHING_GAMES' | 'NOT_TRACKED';
 
 export interface FeedPage {
   items: FeedItem[];
@@ -87,4 +88,12 @@ export interface CatalogStatus {
   detailsLoaded: number;
   /** that fetch is running, so popularity ranking is only partly informed */
   loadingDetails: boolean;
+}
+
+/** What is going on around one game, for its page. A count of followers, never who. */
+export interface GameActivity {
+  watcherCount: number;
+  /** When the newest stored patch note was published; absent when there is none. */
+  latestPatchAt?: string;
+  patchNoteCount: number;
 }
