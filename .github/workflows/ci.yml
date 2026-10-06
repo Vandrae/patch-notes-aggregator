@@ -158,6 +158,14 @@ jobs:
           base=https://localhost
           status() { curl -sk -o /dev/null -w '%{http_code}' "$1"; }
 
+          # compose only waits for the containers to be up; Caddy then needs a few seconds to make its certificate for
+          # localhost, and a request before that fails with a TLS "internal error". Wait for the first real answer.
+          echo "waiting for Caddy to serve https"
+          for attempt in $(seq 1 45); do
+            curl -sk -o /dev/null --max-time 5 $base/actuator/health && break
+            sleep 2
+          done
+
           echo "health";               curl -fsSk $base/actuator/health; echo
           echo "web app is served";    curl -fsSk $base/ | grep -q 'id="root"'
           echo "client route works";   test "$(status $base/feed)" = 200
