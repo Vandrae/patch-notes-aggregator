@@ -99,7 +99,8 @@ How it fits together:
   redirects http to https and forwards requests to the app over the private network, telling it the visitor's address. MySQL
   keeps its data in a named volume (`down` keeps it, `down -v` wipes it); the app starts only once MySQL is healthy. Each
   container has a memory limit sized for a 2 GB machine (app 800 MB, MySQL 512 MB, Caddy 128 MB; MySQL is also trimmed to a
-  128 MB cache and no performance schema). Required secrets are written `${NAME:?message}`, so compose refuses to start when
+  128 MB cache and no performance schema). Each container's log is capped at 30 MB (three files of 10 MB, oldest dropped), because
+  Docker otherwise keeps logs forever and the poller writes all day. Required secrets are written `${NAME:?message}`, so compose refuses to start when
   one is missing instead of running without it. Set `DOMAIN` and `PUBLIC_BASE_URL=https://<DOMAIN>` when you deploy (https
   also turns on the Secure cookie flag); without them the stack runs at `https://localhost`.
 - `compose.yaml` (without `.prod`) is the development one: only a MySQL with its port open, for `--spring.profiles.active=mysql`.
@@ -521,16 +522,19 @@ in an interview.
 
 ## Build order
 
-> **Progress:** steps 1–6 are done for the Steam path (with Dragonwilds as the only game). Step 7, custom adapters,
-> is next: implement `ArticleSource` for the new game and add it to the catalog; nothing else changes.
+> **Progress:** steps 1–6 are done and have grown since this list was written: sign-in is now Steam-only (OpenID) instead of
+> email and password, the catalog is every game on Steam (imported nightly) instead of one hardcoded game, polling is adaptive,
+> and there is a React app, Docker packaging, CI and browser tests. Step 7, non-Steam games, is **not started**: the
+> `ArticleSource` interface and a `CUSTOM` source type exist, but no non-Steam source does. It needs a real, licence-friendly
+> feed to be found first, then an adapter and a table saying which feed belongs to which game.
 
 1. Prove one data path end-to-end — pull Steam News API data for a single
    hardcoded game, parsed into plain `Article` objects. No Spring yet.
 2. Spring Boot + JPA + MySQL skeleton — `Game`, `Article`, `User`,
    `Watchlist` entities, basic CRUD.
-3. Spring Security with JWT — register/login, every watchlist/feed endpoint
+3. Spring Security with JWT — sign-in (now Steam OpenID), every watchlist/feed endpoint
    scoped to the authenticated user.
-4. Game search + watchlist endpoints — search the cached catalog, add/remove
+4. Game search + watchlist endpoints — search the catalog (now all of Steam), add/remove
    games from your own watchlist.
 5. Scheduled poller — query distinct games across all watchlists, fetch,
    normalize, dedupe. Build in job-overlap protection (#7) here.

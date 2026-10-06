@@ -178,6 +178,10 @@ jobs:
           docker compose -f compose.prod.yaml logs --no-color app | grep -E 'Successfully applied [0-9]+ migrations?'
           echo "memory limits are in force"
           docker inspect --format '{{.Name}} {{.HostConfig.Memory}}' $(docker compose -f compose.prod.yaml ps -q) | tee /dev/stderr | awk '$2 == 0 { bad = 1 } END { exit bad }'
+          echo "log rotation is in force (an unbounded log fills a small disk)"
+          for id in $(docker compose -f compose.prod.yaml ps -q); do
+            docker inspect --format '{{.Name}} {{.HostConfig.LogConfig.Config}}' "$id" | tee /dev/stderr | grep 'max-size:10m' > /dev/null
+          done
           echo "starting sign-in too often is refused, with a friendly redirect (last: it uses up this machine's allowance)"
           refused=0
           for i in $(seq 1 40); do

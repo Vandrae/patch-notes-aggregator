@@ -14,10 +14,19 @@
 # A value written ${NAME:?message} makes compose REFUSE TO START with that message when NAME is unset, so a deployment
 # can never silently come up without a database password or a session-signing key.
 
+# Without a limit Docker keeps every container's log forever, and the poller writes all day: on a small disk that is a slow
+# way to run out of space. This keeps the newest 30 MB of log per container (three files of 10 MB, oldest dropped first).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
+    logging: *default-logging
     mem_limit: 512m
     # Trimmed to fit a small machine: a 128 MB cache for table data and no performance schema (which alone would take a
     # few hundred MB), and room for 50 connections, far more than the app's pool ever opens.
@@ -44,6 +53,7 @@ services:
     # the name the built image gets; CI builds and tags it first, then runs compose with --no-build
     image: ${APP_IMAGE:-patch-notes-aggregator:local}
     restart: unless-stopped
+    logging: *default-logging
     # the JVM sizes its heap as 75% of this (see the Dockerfile), the rest is for its own overhead
     mem_limit: 800m
     depends_on:
@@ -71,6 +81,7 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    logging: *default-logging
     mem_limit: 128m
     depends_on:
       app:
