@@ -3,6 +3,7 @@ package com.vandrae.patchnotes.fetch.internal;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -30,7 +31,7 @@ public record CustomGamesProperties(@DefaultValue("true") boolean enabled, List<
     public record CustomGame(String name, String description, @DefaultValue("0") long popularity, List<Source> sources) {
 
         /** The size of the game.short_description column. */
-        static final int MAX_DESCRIPTION = 600;
+        public static final int MAX_DESCRIPTION = 600;
 
         public CustomGame {
             if (name == null || name.isBlank()) {
@@ -47,12 +48,24 @@ public record CustomGamesProperties(@DefaultValue("true") boolean enabled, List<
         }
     }
 
-    /** @param url must be https (see PublisherFeedClient) */
-    public record Source(Kind kind, String url) {
+    /**
+     * @param url         must be https (see PublisherFeedClient)
+     * @param minInterval the least time between two requests to this address, whatever the poller or the number of followers:
+     *                    inside it the previous answer is reused and nothing is sent. For a feed the publisher offers on
+     *                    purpose it can be zero (the poller's own schedule is gentle enough); for a page that is read without
+     *                    the publisher having asked for it, keep it long
+     */
+    public record Source(Kind kind, String url, @DefaultValue("0s") Duration minInterval) {
 
         public Source {
             if (kind == null || url == null || url.isBlank()) {
                 throw new IllegalArgumentException("app.custom.games: a source needs a kind and a url");
+            }
+            if (minInterval == null) {
+                minInterval = Duration.ZERO;
+            }
+            if (minInterval.isNegative()) {
+                throw new IllegalArgumentException("app.custom.games: min-interval of " + url + " cannot be negative");
             }
         }
     }
@@ -61,6 +74,8 @@ public record CustomGamesProperties(@DefaultValue("true") boolean enabled, List<
         /** An RSS 2.0 or Atom feed, including a Discourse forum category's {@code .rss}. */
         RSS,
         /** A Zendesk help centre's public article list (a section's {@code articles.json}). */
-        HELP_CENTER
+        HELP_CENTER,
+        /** A Riot Games news page (leagueoflegends.com, playvalorant.com), whose article list is data inside the page. */
+        RIOT_NEWS
     }
 }

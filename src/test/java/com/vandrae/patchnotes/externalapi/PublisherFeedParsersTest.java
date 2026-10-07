@@ -6,10 +6,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Real responses (trimmed to three posts) from Roblox's developer forum and Minecraft's help centre, plus the odd shapes. */
 class PublisherFeedParsersTest {
@@ -58,6 +60,69 @@ class PublisherFeedParsersTest {
                 ]}""";
 
         assertThat(PublisherFeedParsers.parseHelpCenter(json)).extracting(PublisherPost::title).containsExactly("Fine");
+    }
+
+    // ------------------------------------------------------------------ Riot Games news pages
+
+    private static final URI LOL = URI.create("https://www.leagueoflegends.com/en-us/news/tags/patch-notes/");
+
+    @Test
+    void readsLeagueOfLegendsRealNewsPageNewestFirstWithRiotsOwnTeaser() throws IOException {
+        List<PublisherPost> posts = PublisherFeedParsers.parseRiotNews(fixture("league-of-legends-patch-notes.html"), LOL);
+
+        assertThat(posts).extracting(PublisherPost::title).containsExactly(
+                "League of Legends Patch 26.20 Notes", "League of Legends Patch 26.19 Notes", "League of Legends Patch 26.18 Notes");
+        PublisherPost newest = posts.get(0);
+        assertThat(newest.url()).isEqualTo("https://www.leagueoflegends.com/en-us/news/game-updates/league-of-legends-patch-26-20-notes");
+        assertThat(newest.publishedAt()).isEqualTo(Instant.parse("2026-10-06T18:00:00Z"));
+        assertThat(newest.externalId()).isEqualTo("d1feeede-bde0-47e4-bb9c-b06921b070d6.en-us");
+        assertThat(newest.html()).contains("the Worlds patch is here");
+    }
+
+    @Test
+    void readsValorantsRealNewsPageToo() throws IOException {
+        List<PublisherPost> posts = PublisherFeedParsers.parseRiotNews(fixture("valorant-patch-notes.html"),
+                URI.create("https://playvalorant.com/en-us/news/tags/patch-notes/"));
+
+        assertThat(posts).hasSize(3);
+        assertThat(posts.get(0).title()).isEqualTo("VALORANT Patch Notes 13.06");
+        assertThat(posts.get(0).url()).isEqualTo("https://playvalorant.com/en-us/news/game-updates/valorant-patch-notes-13-06");
+        assertThat(posts.get(0).publishedAt()).isEqualTo(Instant.parse("2026-09-22T13:00:00Z"));
+    }
+
+    private static String riotPage(String items) {
+        return "<html><body><script id=\"__NEXT_DATA__\" type=\"application/json\">"
+                + "{\"props\":{\"pageProps\":{\"page\":{\"blades\":[{\"type\":\"masthead\"},{\"type\":\"grid\",\"items\":[" + items + "]}]}}}}"
+                + "</script></body></html>";
+    }
+
+    @Test
+    void aCardThatLeadsToAnotherSiteIsNotThisSitesArticleAndIsSkipped() {
+        String page = riotPage("""
+                {"title":"Ours","action":{"payload":{"url":"/en-us/news/game-updates/ours"}},"publishedAt":"2026-10-01T00:00:00Z"},
+                {"title":"Elsewhere","action":{"payload":{"url":"https://evil.example/phish"}},"publishedAt":"2026-10-02T00:00:00Z"},
+                {"title":"No link","publishedAt":"2026-10-03T00:00:00Z"}""");
+
+        assertThat(PublisherFeedParsers.parseRiotNews(page, LOL)).extracting(PublisherPost::title).containsExactly("Ours");
+    }
+
+    @Test
+    void itFindsTheArticleListByItsShapeNotByWhereItSits() {
+        String reordered = "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\":{\"pageProps\":{\"page\":{\"blades\":["
+                + "{\"items\":[{\"title\":\"Not an article\",\"id\":1}]},"
+                + "{\"items\":[{\"title\":\"Patch 1\",\"action\":{\"payload\":{\"url\":\"/p1\"}},\"publishedAt\":\"2026-10-01T00:00:00Z\"}]}"
+                + "]}}}}</script>";
+
+        assertThat(PublisherFeedParsers.parseRiotNews(reordered, LOL)).extracting(PublisherPost::title).containsExactly("Patch 1");
+    }
+
+    @Test
+    void aPageThatNoLongerHasItsDataIsAnErrorNotAnEmptyList() {
+        // "Riot changed its site" must not look the same as "no new patch"
+        assertThatThrownBy(() -> PublisherFeedParsers.parseRiotNews("<html><body>A redesigned page</body></html>", LOL))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> PublisherFeedParsers.parseRiotNews(riotPage(""), LOL))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

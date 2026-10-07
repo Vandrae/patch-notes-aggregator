@@ -281,23 +281,25 @@ app:
             url: https://devforum.roblox.com/c/updates/release-notes/62.rss
 ```
 
-Two kinds of source are understood: `RSS` (RSS 2.0 and Atom, including a Discourse forum category's `.rss`) and `HELP_CENTER`
-(a Zendesk help centre's public article list). A game may have several sources, which are combined, and one being down
-does not stop the others. Feeds must be https and are read politely: an honest `User-Agent` naming this project, a
-5 MB cap, 15 second timeout, and the same adaptive schedule as Steam games (a quiet game is asked about once a day). The
-feed's own link goes with every note, and only a short plain-text excerpt is kept, as for Steam.
+Three kinds of source are understood: `RSS` (RSS 2.0 and Atom, including a Discourse forum category's `.rss`), `HELP_CENTER` (a
+Zendesk help centre's public article list) and `RIOT_NEWS` (a Riot Games news page, see below). A game may have several
+sources, which are combined, and one being down does not stop the others. Feeds must be https and are read politely: an
+honest `User-Agent` naming this project, a 5 MB cap, a 15 second timeout, compressed transfer, and the same adaptive
+schedule as Steam games (a quiet game is asked about once a day). The publisher's own link goes with every note, and only a
+short plain-text excerpt is kept, as for Steam.
 
-**Registered now:** Roblox (the Roblox developer forum's release-notes feed) and Minecraft (the official release changelogs
-for Java and Bedrock, from Mojang's help centre).
+**Registered now:** Roblox (the Roblox developer forum's release-notes feed), Minecraft (the official release changelogs for
+Java and Bedrock, from Mojang's help centre), and League of Legends and VALORANT (Riot Games' official patch notes).
 
-**Why only those two.** The rule is: a game is added only when its publisher itself offers its patch notes publicly in a
-machine-readable form. Everything else on the most-streamed list was checked in October 2026:
+**The rule.** A game is added when its publisher itself offers its patch notes publicly and in a form meant to be read by a
+program, with one deliberate, narrow exception: Riot Games. The most-streamed non-Steam games were checked in October 2026:
 
 | Game | What I found | Verdict |
 |---|---|---|
 | Roblox | official RSS (Discourse category) | **added** |
 | Minecraft | official help-centre API with dates, text and links | **added** |
-| League of Legends, Teamfight Tactics, VALORANT | patch notes only as web pages, no feed | not added: would mean scraping the site |
+| League of Legends, VALORANT | no feed, but the news page carries its article list as data | **added**, read as little as possible (below) |
+| Teamfight Tactics | its notes are on a separate site with a different layout | not added |
 | Clash Royale | blog is a web page, no feed | not added |
 | Star Citizen | the "RSS" address returns a web page | not added |
 | World of Warcraft, Hearthstone | no feed at the addresses tried | not added |
@@ -305,8 +307,32 @@ machine-readable form. Everything else on the most-streamed list was checked in 
 | Genshin Impact, Mobile Legends | not investigated (mobile or launcher only) | not added |
 | Pokémon and other Nintendo titles | no public patch-note feed | not added |
 
-Turning a web page into a feed (scraping) is deliberately **not** done: it breaks whenever the site changes, usually needs
-the publisher's permission, and a bot check is a clear "no". If a publisher later offers a feed, adding it is one entry.
+### Riot Games (the exception, and how it is kept small)
+
+Riot publishes no feed. Its news pages are built with Next.js, which leaves the data a page was built from inside the page: a
+list of every patch-notes article with its title, link, date and a short teaser Riot wrote. So one request to the list page
+is enough, and an article page is never opened. What was checked first: Riot's `robots.txt` allows all crawlers; its
+[terms of service](https://www.riotgames.com/en/terms-of-service) ban "bots and automation programs that interact with the Riot
+Services" (section 7.1), which is aimed at game cheats and does not mention reading the website; and its fan-content policy
+([Legal Jibber Jabber](https://www.riotgames.com/en/legal)) says nothing about automated access but asks for a notice that
+the project is not endorsed by Riot, which the privacy page and the footer carry. This is a judgement call, not a permission:
+Riot has not agreed to it. So it is kept as gentle as it can be and still work:
+
+- **One page per game**, about 56 KB with compression, never an article.
+- **At most twice a day per page** (`min-interval: 12h`), enforced inside the app: however often the poller asks and however
+  many people follow the game, the last answer is reused and nothing is sent. A failed read is remembered for up to 30
+  minutes, so a page that has changed shape is not asked for again and again.
+- **Honest identification**: the `User-Agent` names this project and its address.
+- **Only the teaser and a link back** are stored, as for every game.
+- **It fails loudly.** The page is read by the shape of its data, not its position; if that shape disappears the read is an
+  error (visible in the logs, and the game backs off), never an empty list that looks like "no new patch".
+- **A test guards the gentleness**: `ShippedCustomGamesTest` fails if a Riot page's minimum gap is shortened below 12 hours.
+
+If Riot ever asks for this to stop, remove the two entries (and the `RIOT_NEWS` kind): nothing else depends on them.
+
+Turning other publishers' web pages into feeds is not done: it breaks whenever a site changes, and a bot check is a clear
+"no". If a publisher later offers a feed, adding the game is one entry.
+
 What these games lack compared to Steam games: no cover art, genres, ratings or "View on Steam" link (their line says "Patch
 notes from the publisher" instead), and their Discover position comes from the configured `popularity`, not from reviews.
 
@@ -576,7 +602,7 @@ in an interview.
 > email and password, the catalog is every game on Steam (imported nightly) instead of one hardcoded game, polling is adaptive,
 > and there is a React app, Docker packaging, CI and browser tests. Step 7, non-Steam games, is **started**: any game whose
 > publisher offers an RSS/Atom feed or a Zendesk help centre is one configuration entry (see "Games that are not on Steam"),
-> and Roblox and Minecraft are in. The rest of the most-streamed non-Steam games publish their notes only as web pages or
+> and Roblox, Minecraft, League of Legends and VALORANT are in. The rest of the most-streamed non-Steam games publish their notes only as web pages or
 > behind bot checks, so they wait for a feed.
 
 1. Prove one data path end-to-end — pull Steam News API data for a single

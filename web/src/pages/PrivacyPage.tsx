@@ -67,7 +67,12 @@ export function PrivacyPage() {
         .
       </p>
 
-      <p className="fine-print">Not affiliated with Valve. Steam and the Steam logo are trademarks of Valve Corporation.</p>
+      <h2>Notices</h2>
+      <p>
+        Patch Notes was created under Riot Games' "Legal Jibber Jabber" policy using assets owned by Riot Games. Riot Games does not
+        endorse or sponsor this project. League of Legends and VALORANT are trademarks or registered trademarks of Riot Games, Inc.
+      </p>
+      <p>Not affiliated with Valve. Steam and the Steam logo are trademarks of Valve Corporation.</p>
     </main>
   );
 }

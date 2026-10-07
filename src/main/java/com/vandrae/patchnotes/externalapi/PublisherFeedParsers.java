@@ -61,6 +61,51 @@ final class PublisherFeedParsers {
         return newestFirst(posts);
     }
 
+    private static final String NEXT_DATA_OPEN = "<script id=\"__NEXT_DATA__\"";
+
+    /**
+     * A Riot Games news page. The page is built with Next.js, which leaves the data it was built from in one
+     * {@code <script id="__NEXT_DATA__">} block: {@code props.pageProps.page.blades[]}, one of which is the article grid
+     * with an {@code items[]} list, newest first. Every item has a title, a site-relative link, a publish date and a short
+     * teaser Riot wrote. Items are found by their shape (a title, a link and a date) rather than by their position, so a
+     * reordered page still reads; a page where nothing of that shape is found is an error, not an empty list, because
+     * "Riot changed its site" must not look the same as "no new patch".
+     *
+     * @param page where the page was read from: relative links are resolved against it, and only links to the same site are kept
+     */
+    static List<PublisherPost> parseRiotNews(String html, java.net.URI page) {
+        int open = html.indexOf(NEXT_DATA_OPEN);
+        int start = open < 0 ? -1 : html.indexOf('>', open);
+        int end = start < 0 ? -1 : html.indexOf("</script>", start);
+        if (end < 0) {
+            throw new IllegalStateException("no embedded page data");
+        }
+        tools.jackson.databind.JsonNode blades = JSON.readTree(html.substring(start + 1, end))
+                .path("props").path("pageProps").path("page").path("blades");
+        List<PublisherPost> posts = new ArrayList<>();
+        boolean sawArticleList = false;
+        for (tools.jackson.databind.JsonNode blade : blades) {
+            for (tools.jackson.databind.JsonNode item : blade.path("items")) {
+                if (!item.hasNonNull("publishedAt") || !item.hasNonNull("title")) {
+                    continue; // not an article card
+                }
+                sawArticleList = true;
+                String link = item.path("action").path("payload").path("url").asString("");
+                java.net.URI resolved = link.isBlank() ? null : page.resolve(link);
+                if (resolved == null || resolved.getHost() == null || !resolved.getHost().equalsIgnoreCase(page.getHost())) {
+                    continue; // a card that leads somewhere else is not this site's own article
+                }
+                String id = item.path("analytics").path("contentId").asString("");
+                add(posts, id.isBlank() ? resolved.getPath() : id, item.path("title").asString(""), resolved.toString(),
+                        item.path("description").path("body").asString(""), date(item.path("publishedAt").asString("")));
+            }
+        }
+        if (!sawArticleList) {
+            throw new IllegalStateException("no article list in the page data");
+        }
+        return newestFirst(posts);
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record HelpCenterArticles(List<Article> articles) {
         HelpCenterArticles {
