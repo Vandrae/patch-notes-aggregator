@@ -25,7 +25,7 @@ async function follow(page: Page, name: string) {
   await expect(row.getByRole('button', { name: /^stop watching /i })).toBeVisible();
 }
 
-/** Covers and icons come from Steam's CDN, or are this site's own art: wait until every picture on the page has really loaded. */
+/** Covers and icons come from Steam's CDN: wait until every picture on the page has really loaded. */
 async function picturesLoaded(page: Page) {
   await page.waitForLoadState('networkidle');
   await page.waitForFunction(() => [...document.images].every((image) => image.complete && image.naturalWidth > 0), undefined, { timeout: 30_000 });
@@ -67,7 +67,7 @@ test('take the README screenshots', async ({ page, browser }) => {
   await small.screenshot({ path: `${OUT}/feed-phone.png` });
   await phone.close();
 
-  // 3. finding games: the most popular first, Steam covers next to the art made for games that are not on Steam
+  // 3. finding games: the most popular first, Steam covers next to the games that are not on Steam
   await navLink(page, 'Discover').click();
   await page.setViewportSize({ width: 1100, height: 1300 });
   await expect(page.getByText(/most popular first/)).toBeVisible();
@@ -98,11 +98,10 @@ test('take the README screenshots', async ({ page, browser }) => {
   await picturesLoaded(page);
   await page.screenshot({ path: `${OUT}/game.png` });
 
-  // 6. the page of a game that is not on Steam: the project's own cover art, and the publisher's real notes
+  // 6. the page of a game that is not on Steam: the publisher's real notes
   await navLink(page, 'Watchlist').click();
   await page.getByRole('link', { name: exactly(NON_STEAM_PAGE_GAME) }).click();
   await expect(page.getByRole('heading', { level: 1, name: NON_STEAM_PAGE_GAME })).toBeVisible();
-  await expect(page.locator('img.game-cover')).toHaveAttribute('src', '/art/minecraft-cover.svg');
   await expect(page.locator('article').first()).toBeVisible();
   await picturesLoaded(page);
   await page.screenshot({ path: `${OUT}/game-minecraft.png` });

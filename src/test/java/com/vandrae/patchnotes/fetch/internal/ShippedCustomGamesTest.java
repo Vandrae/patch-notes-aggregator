@@ -10,7 +10,6 @@ import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -51,28 +50,11 @@ class ShippedCustomGamesTest {
     }
 
     @Test
-    void everyShippedGameHasItsOwnCoverAndIconAndTheFilesExist() throws IOException {
+    void anyArtAShippedGameNamesIsAFileThatExists() throws IOException {
+        // no art ships today (the app draws a lettered tile), but a path that points at nothing would be a broken picture
         for (CustomGame game : shipped()) {
-            assertThat(game.image()).as(game.name() + " cover").isNotBlank();
-            assertThat(game.icon()).as(game.name() + " icon").isNotBlank();
-            for (String path : List.of(game.image(), game.icon())) {
+            for (String path : java.util.stream.Stream.of(game.image(), game.icon()).filter(java.util.Objects::nonNull).toList()) {
                 assertThat(Path.of("web/public" + path)).as(game.name() + ": " + path).isRegularFile();
-            }
-        }
-    }
-
-    @Test
-    void theArtIsPlainDrawingWithNothingThatRunsOrReachesOutToAnotherSite() throws IOException {
-        // an SVG is a small program, and it is served from our own address: keep it to shapes and text
-        try (var files = Files.list(Path.of("web/public/art"))) {
-            for (Path file : files.toList()) {
-                String svg = Files.readString(file).replace("xmlns=\"http://www.w3.org/2000/svg\"", "");
-                assertThat(Files.size(file)).as(file + " size").isLessThan(8_000);
-                assertThat(svg).as(file.toString()).doesNotContainIgnoringCase("<script")
-                        .doesNotContainIgnoringCase("<foreignObject").doesNotContainIgnoringCase("<image")
-                        .doesNotContainIgnoringCase("<use").doesNotContainIgnoringCase("javascript:")
-                        .doesNotContain("http://").doesNotContain("https://")
-                        .doesNotContainPattern("(?i)\\son[a-z]+\\s*=");
             }
         }
     }

@@ -71,34 +71,15 @@ Turning other publishers' web pages into feeds is not done: it breaks whenever a
 
 ## Artwork
 
-Steam games get their cover and icon from Steam. A game that is not on Steam gets **original artwork made for this project**:
-a cover (460 by 215, the shape of Steam's) and a square icon, as small hand-written SVG files in `web/public/art/`, named in the
-game's entry:
+Steam games get their cover and icon from Steam. A game that is not on Steam has none: the app draws a lettered tile, and its
+page has no cover. That is on purpose. The publishers' official art could not be used: Riot's press page offers only logos, and
+Riot's fan-project rules ban its logos; Roblox does not allow its logo; Mojang's guidelines could not be read. Nothing is
+hotlinked from a publisher either.
 
-```yaml
-- name: Roblox
-  image: /art/roblox-cover.svg
-  icon: /art/roblox-icon.svg
-```
-
-**Why not the publishers' own art?** I read their policies first, and the answer was no for every one of them:
-
-| Publisher | What its policy says (October 2026) |
-|---|---|
-| Riot (League of Legends, VALORANT) | Fan projects may use Riot's assets non-commercially, **but "you may not use any of our logos or trademarks anywhere in your Project"**. Its news banners are either one character's skin art (not the game) or promo graphics with a season mark baked in, and run from 340 KB to 2.7 MB. |
-| Roblox | Its logo is not permitted for general use, and it says it does not grant unsolicited requests to use it. |
-| Minecraft | Non-commercial fan sites are covered by Mojang's usage guidelines, but I could not read the page itself and the summaries I found were unclear about logos and screenshots. |
-
-So nothing here is a publisher's logo, key art or screenshot, and nothing is hotlinked from a publisher's servers: the files are
-served from this site, which also means the page's image policy needs no exceptions. Two rules enforce that:
-
-- **Startup refuses anything else.** `image` and `icon` must be a file in this site's `/art/` folder (lower-case letters, digits
-  and dashes; `.svg`, `.png`, `.webp` or `.jpg`). A web address, `/art/../x` or another folder fails with a clear message.
-- **A test checks the art itself** (`ShippedCustomGamesTest`): every shipped game has both files, and each SVG is small and has
-  no script, no embedded image, no link to another site and no event handlers, because an SVG is a small program.
-
-If a publisher ever offers official art with a licence that fits, putting it in `web/public/art/` and naming it in the entry is
-all it takes. A game with no art still works: the app draws a lettered tile.
+An entry can still name art (`image` and `icon`), which must be a file in this site's `/art/` folder (lower-case letters,
+digits and dashes; `.svg`, `.png`, `.webp` or `.jpg`); startup refuses a web address or any other path, and a test checks the
+file exists. No art ships today. If a publisher offers official art with a licence that fits, putting the file in
+`web/public/art/` and naming it in the entry is all it takes.
 
 What these games still lack compared to Steam games: genres, review ratings and a "View on Steam" link (their line says "Patch
 notes from the publisher" instead), and their Discover position comes from the configured `popularity`, not from reviews.

@@ -28,19 +28,15 @@ const child = spawn(
     '--app.security.jwt.secret=e2e-only-secret-e2e-only-secret-e2e-only',
     '--spring.datasource.url=jdbc:h2:mem:e2e;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1',
     // The non-Steam games (Roblox, Minecraft) read the fake publishers on the fake Steam's port, not the real internet. (A list set
-    // here replaces the one in application.yml entirely, so every field the tests rely on, art included, is repeated.)
+    // here replaces the one in application.yml entirely, so every field the tests rely on is repeated.)
     '--app.custom.games[0].name=Roblox',
     '--app.custom.games[0].description=Test description for Roblox.',
     '--app.custom.games[0].popularity=20000000',
-    '--app.custom.games[0].image=/art/roblox-cover.svg',
-    '--app.custom.games[0].icon=/art/roblox-icon.svg',
     '--app.custom.games[0].sources[0].kind=RSS',
     `--app.custom.games[0].sources[0].url=${STEAM}/publisher/roblox.rss`,
     '--app.custom.games[1].name=Minecraft',
     '--app.custom.games[1].description=Test description for Minecraft.',
     '--app.custom.games[1].popularity=20000000',
-    '--app.custom.games[1].image=/art/minecraft-cover.svg',
-    '--app.custom.games[1].icon=/art/minecraft-icon.svg',
     '--app.custom.games[1].sources[0].kind=HELP_CENTER',
     `--app.custom.games[1].sources[0].url=${STEAM}/publisher/minecraft.json`,
     // Limits sized for this suite: it signs in about ten times from one address, then deliberately runs into the limit.

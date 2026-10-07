@@ -26,7 +26,7 @@ public record CustomGamesProperties(@DefaultValue("true") boolean enabled, List<
      * @param description one or two plain sentences for the game's page
      * @param popularity  where it sorts when browsing Discover, among Steam games ordered by reviews and chart players; a
      *                    game that is not on Steam has neither, so this stands in (it orders, it does not measure)
-     * @param image       the game's cover, a file in this site's {@code /art/} folder (original artwork: a publisher's logos and
+     * @param image       the game's cover, a file in this site's {@code /art/} folder (none ship today: a publisher's logos and
      *                    key art are only used with its permission, which most do not give); absent = a generated tile
      * @param icon        the game's small square icon, likewise; absent = a generated tile
      * @param sources     where its patch notes are read from; the results of all of them are combined
