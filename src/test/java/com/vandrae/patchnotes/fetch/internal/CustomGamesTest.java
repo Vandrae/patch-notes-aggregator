@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
         "app.custom.games[0].name=Custompub Single",
         "app.custom.games[0].description=A game with one feed.",
         "app.custom.games[0].popularity=777",
+        "app.custom.games[0].image=/art/roblox-cover.svg",
+        "app.custom.games[0].icon=/art/roblox-icon.svg",
         "app.custom.games[0].sources[0].kind=RSS",
         "app.custom.games[0].sources[0].url=https://publisher.test/single.rss",
         "app.custom.games[1].name=Custompub Double",
@@ -72,6 +74,10 @@ class CustomGamesTest {
         assertThat(single.sourceType()).isEqualTo(SourceType.CUSTOM);
         assertThat(single.steamAppId()).isNull();
         assertThat(single.shortDescription()).isEqualTo("A game with one feed.");
+        // its art is a path on this site, used as it is (Steam's are paths under Steam's image servers)
+        assertThat(single.imageUrl()).isEqualTo("/art/roblox-cover.svg");
+        assertThat(single.iconUrl()).isEqualTo("/art/roblox-icon.svg");
+        assertThat(game("Custompub Double").imageUrl()).isNull(); // no art configured: the app draws a tile
         assertThat(catalog.search("custompub", 0, 10).getContent()).extracting(GameSummary::name)
                 .contains("Custompub Single", "Custompub Double");
         assertThat(jdbc.queryForObject("SELECT popularity FROM game WHERE id = ?", Long.class, single.id())).isEqualTo(777L);

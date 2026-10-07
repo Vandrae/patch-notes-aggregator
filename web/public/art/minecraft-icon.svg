@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 184" width="184" height="184" role="img" aria-label="Minecraft">
+  <defs><clipPath id="r"><rect width="184" height="184" rx="36"/></clipPath></defs>
+  <g clip-path="url(#r)">
+    <rect width="184" height="184" fill="#7cc0f5"/>
+    <rect x="128" y="22" width="26" height="26" fill="#ffe066"/>
+    <path d="M0 104 H44 V88 H92 V72 H140 V88 H184 V184 H0 Z" fill="#3f9b3f"/>
+    <path d="M0 128 H44 V112 H92 V96 H140 V112 H184 V184 H0 Z" fill="#8a6540"/>
+    <path d="M0 160 H184 V184 H0 Z" fill="#6b4e31"/>
+  </g>
+</svg>

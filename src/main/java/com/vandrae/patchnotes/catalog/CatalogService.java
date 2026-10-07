@@ -76,16 +76,18 @@ public class CatalogService {
 
     /**
      * Makes sure a game that is not on Steam exists in the catalog, and returns its id. Safe to call on every start: an
-     * existing game is kept (so people's watchlists stay valid) and only its description and ordering weight are refreshed.
+     * existing game is kept (so people's watchlists stay valid) and only its description, ordering weight and art are refreshed.
      *
+     * @param image      the cover and icon: files in this site's own {@code /art/} folder (or null for none), kept as the path they are
+     *                   served from, where Steam's are paths under Steam's image servers
      * @param popularity where it sorts among Steam games when browsing, whose own weight is reviews plus ten times the
      *                   peak players on Steam's charts; a game that is not on Steam has no such number, so one is given
      */
     @Transactional
-    public long ensureCustomGame(String name, String shortDescription, long popularity) {
+    public long ensureCustomGame(String name, String shortDescription, long popularity, String image, String icon) {
         Game game = games.findFirstByNameAndSourceType(name, SourceType.CUSTOM)
                 .orElseGet(() -> games.saveAndFlush(new Game(name, null, SourceType.CUSTOM)));
-        games.describeCustomGame(game.getId(), shortDescription, popularity);
+        games.describeCustomGame(game.getId(), shortDescription, popularity, image, icon);
         return game.getId();
     }
 
@@ -114,9 +116,17 @@ public class CatalogService {
         }
     }
 
+    /** Steam's art is stored as a path under Steam's image servers; a game that is not on Steam has its own art on this site, kept as a path starting with "/" and used as it is. */
+    private static String resolve(String base, String path) {
+        if (path == null) {
+            return null;
+        }
+        return path.startsWith("/") ? path : base + path;
+    }
+
     private GameSummary toSummary(Game game) {
-        String imageUrl = game.getImagePath() == null ? null : imageBaseUrl + game.getImagePath();
-        String iconUrl = game.getIconPath() == null ? null : iconBaseUrl + game.getIconPath();
+        String imageUrl = resolve(imageBaseUrl, game.getImagePath());
+        String iconUrl = resolve(iconBaseUrl, game.getIconPath());
         return new GameSummary(game.getId(), game.getName(), game.getSourceType(), game.getSteamAppId(),
                 game.getShortDescription(), imageUrl, iconUrl,
                 game.getGenres().stream().sorted().toList(),

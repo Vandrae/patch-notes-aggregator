@@ -61,5 +61,5 @@ npm run screenshots
 What it does (`e2e/screenshots/`): copies `data/patchnotes.mv.db` to one temporary folder (replaced on every run) and starts the packaged app on the copy
 (your real database is never opened; a forced stop can leave that one copy, about 200 MB, in the temp folder until the next run replaces it), with only sign-in faked by the same fake Steam the
 browser tests use, so no real account is involved. It then follows a few real games, waits for their real patch notes to
-arrive, and photographs the feed, a search, a game page and the feed at phone size in a headless browser. The patch notes are
+arrive, and photographs the feed, the Discover list, the open filters, a game page, the page of a game that is not on Steam, and the feed at phone size in a headless browser. The patch notes are
 whatever the publishers posted that day, so the pictures change a little each time.

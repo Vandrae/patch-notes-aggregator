@@ -44,6 +44,11 @@ describe('GameThumb', () => {
     expect(container.querySelector('.game-tile')).toBeInTheDocument();
   });
 
+  it("draws this site's own cover art for a game that is not on Steam", () => {
+    const { container } = render(<GameThumb game={{ ...game, imageUrl: '/art/roblox-cover.svg' }} />);
+    expect(container.querySelector('img')).toHaveAttribute('src', '/art/roblox-cover.svg');
+  });
+
   it('never renders a non-https image URL', () => {
     for (const imageUrl of ['http://evil.test/x.jpg', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>', '//evil.test/x.jpg']) {
       const { container, unmount } = render(<GameThumb game={{ ...game, imageUrl }} />);

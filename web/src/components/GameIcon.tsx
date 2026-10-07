@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { safeImageSrc } from '../format';
 import { GameTile } from './GameTile';
 
 /**
@@ -7,8 +8,8 @@ import { GameTile } from './GameTile';
  */
 export function GameIcon({ name, iconUrl, size = 32 }: { name: string; iconUrl: string | null; size?: number }) {
   const [broken, setBroken] = useState(false);
-  // from Steam's CDN; never render anything but a plain https URL into an <img>
-  const src = iconUrl?.startsWith('https://') ? iconUrl : undefined;
+  // from Steam's CDN, or this site's own art for games that are not on Steam: nothing else goes into an <img>
+  const src = safeImageSrc(iconUrl);
 
   if (src && !broken) {
     return (

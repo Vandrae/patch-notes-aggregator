@@ -35,6 +35,11 @@ describe('GameIcon', () => {
     expect(container.querySelector('.game-tile')).toBeInTheDocument();
   });
 
+  it("draws this site's own art for a game that is not on Steam", () => {
+    const { container } = render(<GameIcon name="Roblox" iconUrl="/art/roblox-icon.svg" />);
+    expect(container.querySelector('img')).toHaveAttribute('src', '/art/roblox-icon.svg');
+  });
+
   it('never renders a non-https URL into an <img>', () => {
     for (const iconUrl of ['http://evil.test/x.jpg', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>', '//evil.test/x.jpg']) {
       const { container, unmount } = render(<GameIcon name="X Game" iconUrl={iconUrl} />);

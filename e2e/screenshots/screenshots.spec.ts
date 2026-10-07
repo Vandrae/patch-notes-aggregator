@@ -12,6 +12,7 @@ const OUT = resolve(process.cwd(), '..', 'docs', 'screenshots');
 // it patches so often that it would fill the whole first screen of the feed with itself. It is followed afterwards, for its page.
 const FEED_GAMES = ['Dota 2', 'Warframe', 'Rust', 'ELDEN RING', 'Minecraft', 'League of Legends', 'VALORANT'];
 const PAGE_GAME = 'Counter-Strike 2';
+const NON_STEAM_PAGE_GAME = 'Minecraft';
 
 const exactly = (name: string) => new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
 
@@ -24,7 +25,7 @@ async function follow(page: Page, name: string) {
   await expect(row.getByRole('button', { name: /^stop watching /i })).toBeVisible();
 }
 
-/** Covers and icons come from Steam's CDN: wait until every picture on the page has really loaded. */
+/** Covers and icons come from Steam's CDN, or are this site's own art: wait until every picture on the page has really loaded. */
 async function picturesLoaded(page: Page) {
   await page.waitForLoadState('networkidle');
   await page.waitForFunction(() => [...document.images].every((image) => image.complete && image.naturalWidth > 0), undefined, { timeout: 30_000 });
@@ -41,10 +42,11 @@ test('take the README screenshots', async ({ page, browser }) => {
     .poll(async () => (await (await page.request.get('/api/feed?size=1')).json()).totalItems, { timeout: 180_000, intervals: [2_000] })
     .toBeGreaterThanOrEqual(12);
 
-  // 1. the feed (tall enough to get past the filter chips and show several notes)
+  // 1. the feed: the Filters button is closed, so the notes start on the first screen
   await page.setViewportSize({ width: 1100, height: 1500 });
   await navLink(page, 'Feed').click();
   await expect(page.getByRole('heading', { name: 'Your patch notes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Filters', exact: true })).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('article').first()).toBeVisible();
   await picturesLoaded(page);
   await page.screenshot({ path: `${OUT}/feed.png` });
@@ -65,17 +67,28 @@ test('take the README screenshots', async ({ page, browser }) => {
   await small.screenshot({ path: `${OUT}/feed-phone.png` });
   await phone.close();
 
-  // 3. finding games: search with covers, ratings and genres
+  // 3. finding games: the most popular first, Steam covers next to the art made for games that are not on Steam
   await navLink(page, 'Discover').click();
   await page.setViewportSize({ width: 1100, height: 1300 });
-  await page.getByRole('searchbox', { name: 'Search games' }).fill('witcher');
-  // wait for the results OF THIS SEARCH: the unfiltered list is already on screen and must not be photographed by mistake
-  await expect(page.getByText(/matching "witcher"/)).toBeVisible();
-  await expect(page.getByRole('listitem').first()).toContainText(/witcher/i);
+  await expect(page.getByText(/most popular first/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Roblox', exact: true })).toBeVisible();
   await picturesLoaded(page);
   await page.screenshot({ path: `${OUT}/discover.png` });
 
-  // 4. a game's own page: cover, followers and its history
+  // 4. the Filters panel open, with a genre and an age rating chosen
+  const resultCount = page.locator('.result-count');
+  const totalBefore = ((await resultCount.innerText()).match(/^[\d,]+/) ?? [''])[0];
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await page.getByRole('button', { name: 'RPG', exact: true }).click();
+  await page.getByRole('button', { name: 'Teen', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Filters, 2 active' })).toBeVisible();
+  // the old list stays on screen, already captioned "fit your filters", until the new one arrives: wait for the NUMBER to change
+  await expect(resultCount).toContainText('fit your filters');
+  await expect(resultCount).not.toHaveText(new RegExp(`^${totalBefore}\\b`));
+  await picturesLoaded(page);
+  await page.screenshot({ path: `${OUT}/filters.png` });
+
+  // 5. a game's own page: cover, followers and its history
   await follow(page, PAGE_GAME);
   await page.setViewportSize({ width: 1100, height: 1500 });
   await navLink(page, 'Watchlist').click();
@@ -84,4 +97,13 @@ test('take the README screenshots', async ({ page, browser }) => {
   await expect(page.locator('article').first()).toBeVisible();
   await picturesLoaded(page);
   await page.screenshot({ path: `${OUT}/game.png` });
+
+  // 6. the page of a game that is not on Steam: the project's own cover art, and the publisher's real notes
+  await navLink(page, 'Watchlist').click();
+  await page.getByRole('link', { name: exactly(NON_STEAM_PAGE_GAME) }).click();
+  await expect(page.getByRole('heading', { level: 1, name: NON_STEAM_PAGE_GAME })).toBeVisible();
+  await expect(page.locator('img.game-cover')).toHaveAttribute('src', '/art/minecraft-cover.svg');
+  await expect(page.locator('article').first()).toBeVisible();
+  await picturesLoaded(page);
+  await page.screenshot({ path: `${OUT}/game-minecraft.png` });
 });

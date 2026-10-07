@@ -76,8 +76,10 @@ public interface GameRepository extends JpaRepository<Game, Long> {
 
     Optional<Game> findFirstByNameAndSourceType(String name, SourceType sourceType);
 
-    /** Description and ordering weight for a game that is not on Steam (the details job only ever touches Steam games). */
+    /** Description, ordering weight and art for a game that is not on Steam (the details job only ever touches Steam games). */
     @Modifying
-    @Query(value = "UPDATE game SET short_description = :description, popularity = :popularity WHERE id = :id", nativeQuery = true)
-    void describeCustomGame(@Param("id") long id, @Param("description") String description, @Param("popularity") long popularity);
+    @Query(value = "UPDATE game SET short_description = :description, popularity = :popularity, image_path = :image, icon_path = :icon WHERE id = :id",
+            nativeQuery = true)
+    void describeCustomGame(@Param("id") long id, @Param("description") String description, @Param("popularity") long popularity,
+                            @Param("image") String image, @Param("icon") String icon);
 }

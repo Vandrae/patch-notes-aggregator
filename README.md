@@ -23,7 +23,7 @@ stack with HTTPS.
 - **Follow games** and read a feed of their patch notes. Each game has its own page with its follower count and full
   history. Only the games somebody follows are ever fetched, on an adaptive schedule that keeps API calls low.
 - **Games that are not on Steam** (Roblox, Minecraft, League of Legends, VALORANT) are read from the publishers' own feeds.
-  Adding another game that offers a feed is one entry of configuration, no code. [Details and the rules for adding one](docs/non-steam-games.md).
+  Adding another game that offers a feed is one entry of configuration, no code, and each has its own artwork. [Details and the rules for adding one](docs/non-steam-games.md).
 - **Careful with other people's content and your data**: it keeps a short excerpt and a link back, never the full post;
   it logs no addresses or secrets; rate limits protect the sign-in and the Steam calls; there is a privacy page and one
   button to delete your account.
@@ -33,18 +33,28 @@ stack with HTTPS.
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/feed.png" alt="The feed: patch notes from League of Legends, Minecraft and Dota 2, newest first, each with a short excerpt and a link to the full notes">
-      <br><sub><b>The feed.</b> Patch notes from every game you follow, newest first: a short excerpt and a link to the full notes.</sub>
+      <img src="docs/screenshots/feed.png" alt="The feed: patch notes from League of Legends, Minecraft and Dota 2, newest first, each with a short excerpt and a link to the full notes; one small Filters button above them">
+      <br><sub><b>The feed.</b> Patch notes from every game you follow, newest first: a short excerpt and a link to the full notes. The filters wait behind one button.</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/discover.png" alt="Searching the catalog for 'witcher': covers, review ratings, age ratings and genres for each result, and a Watch button">
-      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games) with covers, review ratings, age ratings and genre filters.</sub>
+      <img src="docs/screenshots/discover.png" alt="Discover: the most popular games first, with Steam covers beside original artwork for League of Legends, Minecraft, Roblox and VALORANT">
+      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside with their own artwork.</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
+      <img src="docs/screenshots/filters.png" alt="The Filters panel open with the RPG genre and the Teen age rating chosen, a count of 2 on the button, and 844 matching games below">
+      <br><sub><b>Filters.</b> Genre, age rating and review rating open from the button, which shows how many are on. Closed, each shows as a chip that removes it.</sub>
+    </td>
+    <td width="50%" valign="top">
       <img src="docs/screenshots/game.png" alt="A game's page for Counter-Strike 2: cover image, description, rating, how many people follow it and its patch-note history">
       <br><sub><b>A game's page.</b> Cover, rating, how many people follow it, and its full patch-note history.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/game-minecraft.png" alt="The page of Minecraft, a game that is not on Steam: original cover artwork and the official release changelogs read from Mojang's help centre">
+      <br><sub><b>A game that is not on Steam.</b> Minecraft's notes come from Mojang's own changelogs; the cover is original artwork made for this project, not Mojang's.</sub>
     </td>
     <td width="50%" valign="top" align="center">
       <img src="docs/screenshots/feed-phone.png" alt="The feed on a phone" width="260">

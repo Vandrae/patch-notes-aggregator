@@ -7,7 +7,7 @@ import { GameBadges } from '../components/GameBadges';
 import { GameMeta } from '../components/GameMeta';
 import { EmptyState, ErrorState, SkeletonList } from '../components/States';
 import { WatchButton } from '../components/WatchButton';
-import { fullDate, timeAgo } from '../format';
+import { fullDate, safeImageSrc, timeAgo } from '../format';
 import { useDocumentTitle } from '../hooks';
 import { keys, useGame, useGameActivity, useGamePatchNotes } from '../queries';
 import type { Game } from '../types';
@@ -48,8 +48,8 @@ export function GamePage() {
 function Hero({ game }: { game: Game }) {
   const { data: activity } = useGameActivity(game.id);
   const [broken, setBroken] = useState(false);
-  // images come from Steam's CDN; never render anything but a plain https URL into an <img>
-  const cover = game.imageUrl?.startsWith('https://') && !broken ? game.imageUrl : undefined;
+  // images come from Steam's CDN, or this site's own art for games that are not on Steam: nothing else goes into an <img>
+  const cover = broken ? undefined : safeImageSrc(game.imageUrl);
 
   return (
     <section className="card game-hero" aria-labelledby="game-title">

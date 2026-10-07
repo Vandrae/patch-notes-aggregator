@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 184" width="184" height="184" role="img" aria-label="League of Legends">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#091428"/><stop offset="1" stop-color="#1c3a70"/></linearGradient></defs>
+  <rect width="184" height="184" rx="36" fill="url(#bg)"/>
+  <g fill="none" stroke="#c8aa6e" stroke-width="5">
+    <polygon points="92,26 150,59 150,125 92,158 34,125 34,59"/>
+    <polygon points="92,52 128,73 128,111 92,132 56,111 56,73" opacity="0.7"/>
+  </g>
+  <circle cx="92" cy="92" r="12" fill="#c8aa6e"/>
+</svg>

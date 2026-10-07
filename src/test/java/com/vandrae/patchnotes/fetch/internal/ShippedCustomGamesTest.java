@@ -10,10 +10,13 @@ import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The list of non-Steam games that ships in application.yml, read the way the app reads it. No database and no network:
@@ -45,6 +48,44 @@ class ShippedCustomGamesTest {
             assertThat(game.sources()).allSatisfy(source -> assertThat(source.url()).startsWith("https://"));
             assertThat(game.description()).as(game.name()).isNotBlank().hasSizeLessThanOrEqualTo(CustomGame.MAX_DESCRIPTION);
         }
+    }
+
+    @Test
+    void everyShippedGameHasItsOwnCoverAndIconAndTheFilesExist() throws IOException {
+        for (CustomGame game : shipped()) {
+            assertThat(game.image()).as(game.name() + " cover").isNotBlank();
+            assertThat(game.icon()).as(game.name() + " icon").isNotBlank();
+            for (String path : List.of(game.image(), game.icon())) {
+                assertThat(Path.of("web/public" + path)).as(game.name() + ": " + path).isRegularFile();
+            }
+        }
+    }
+
+    @Test
+    void theArtIsPlainDrawingWithNothingThatRunsOrReachesOutToAnotherSite() throws IOException {
+        // an SVG is a small program, and it is served from our own address: keep it to shapes and text
+        try (var files = Files.list(Path.of("web/public/art"))) {
+            for (Path file : files.toList()) {
+                String svg = Files.readString(file).replace("xmlns=\"http://www.w3.org/2000/svg\"", "");
+                assertThat(Files.size(file)).as(file + " size").isLessThan(8_000);
+                assertThat(svg).as(file.toString()).doesNotContainIgnoringCase("<script")
+                        .doesNotContainIgnoringCase("<foreignObject").doesNotContainIgnoringCase("<image")
+                        .doesNotContainIgnoringCase("<use").doesNotContainIgnoringCase("javascript:")
+                        .doesNotContain("http://").doesNotContain("https://")
+                        .doesNotContainPattern("(?i)\\son[a-z]+\\s*=");
+            }
+        }
+    }
+
+    @Test
+    void artThatIsNotOurOwnFileIsRefusedAtStartup() {
+        var sources = List.of(new CustomGamesProperties.Source(Kind.RSS, "https://a.test/feed.rss", Duration.ZERO));
+        for (String bad : List.of("https://cdn.publisher.example/logo.png", "/other/x.svg", "/art/../secret.svg", "/art/UPPER.svg", "/art/x.exe")) {
+            assertThatThrownBy(() -> new CustomGame("G", "d", 0, bad, null, sources))
+                    .as(bad).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("/art/");
+        }
+        assertThat(new CustomGame("G", "d", 0, "/art/fine-cover.svg", "/art/fine-icon.png", sources).image()).isEqualTo("/art/fine-cover.svg");
+        assertThat(new CustomGame("G", "d", 0, null, null, sources).icon()).isNull(); // art is optional
     }
 
     @Test

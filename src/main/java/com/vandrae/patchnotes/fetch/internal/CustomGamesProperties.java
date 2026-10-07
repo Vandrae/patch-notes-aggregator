@@ -26,9 +26,20 @@ public record CustomGamesProperties(@DefaultValue("true") boolean enabled, List<
      * @param description one or two plain sentences for the game's page
      * @param popularity  where it sorts when browsing Discover, among Steam games ordered by reviews and chart players; a
      *                    game that is not on Steam has neither, so this stands in (it orders, it does not measure)
+     * @param image       the game's cover, a file in this site's {@code /art/} folder (original artwork: a publisher's logos and
+     *                    key art are only used with its permission, which most do not give); absent = a generated tile
+     * @param icon        the game's small square icon, likewise; absent = a generated tile
      * @param sources     where its patch notes are read from; the results of all of them are combined
      */
-    public record CustomGame(String name, String description, @DefaultValue("0") long popularity, List<Source> sources) {
+    public record CustomGame(String name, String description, @DefaultValue("0") long popularity, String image, String icon,
+                             List<Source> sources) {
+
+        /** Art is the project's own, served from this site's {@code /art/} folder: never a publisher's image, never hotlinked. */
+        private static final java.util.regex.Pattern ART = java.util.regex.Pattern.compile("/art/[a-z0-9-]+\\.(svg|png|webp|jpg)");
+
+        /** The sizes of the game.image_path and game.icon_path columns. */
+        static final int MAX_IMAGE = 300;
+        static final int MAX_ICON = 100;
 
         /** The size of the game.short_description column. */
         public static final int MAX_DESCRIPTION = 600;
@@ -43,8 +54,17 @@ public record CustomGamesProperties(@DefaultValue("true") boolean enabled, List<
             if (description != null && description.length() > MAX_DESCRIPTION) {
                 throw new IllegalArgumentException("app.custom.games: the description of '" + name + "' is longer than " + MAX_DESCRIPTION + " characters");
             }
+            checkArt(name, "image", image, MAX_IMAGE);
+            checkArt(name, "icon", icon, MAX_ICON);
             name = name.strip();
             sources = List.copyOf(sources);
+        }
+
+        private static void checkArt(String game, String what, String path, int maxLength) {
+            if (path != null && (path.length() > maxLength || !ART.matcher(path).matches())) {
+                throw new IllegalArgumentException("app.custom.games: the " + what + " of '" + game + "' must be a file in this site's /art/ folder, like /art/example-"
+                        + what + ".svg (at most " + maxLength + " characters)");
+            }
         }
     }
 

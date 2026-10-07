@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hueFor, initials, safeExternalUrl, timeAgo } from './format';
+import { hueFor, initials, safeExternalUrl, safeImageSrc, timeAgo } from './format';
 
 describe('timeAgo', () => {
   const now = new Date('2026-10-01T12:00:00Z');
@@ -46,5 +46,34 @@ describe('safeExternalUrl', () => {
     expect(safeExternalUrl('javascript:alert(1)')).toBeUndefined();
     expect(safeExternalUrl('data:text/html,<script>1</script>')).toBeUndefined();
     expect(safeExternalUrl('not a url')).toBeUndefined();
+  });
+});
+
+describe('safeImageSrc', () => {
+  it('allows Steam-style https addresses and this site\'s own art files', () => {
+    expect(safeImageSrc('https://shared.akamai.steamstatic.com/x/header.jpg')).toBe('https://shared.akamai.steamstatic.com/x/header.jpg');
+    expect(safeImageSrc('/art/roblox-cover.svg')).toBe('/art/roblox-cover.svg');
+    expect(safeImageSrc('/art/league-of-legends-icon.png')).toBe('/art/league-of-legends-icon.png');
+  });
+
+  it('refuses everything else, including look-alikes of an own-site path', () => {
+    for (const bad of [
+      'http://example.test/x.png',
+      '//evil.test/art/x.svg', // protocol-relative: another site
+      '/other/x.svg', // another folder on this site
+      '/art/../secret.svg',
+      '/art/x.svg?next=https://evil.test',
+      '/art/UPPER.svg',
+      '/art/sub/x.svg',
+      '/art/x.html',
+      'art/x.svg', // not rooted
+      'javascript:alert(1)',
+      'data:image/svg+xml,<svg/>',
+      '',
+    ]) {
+      expect(safeImageSrc(bad), bad).toBeUndefined();
+    }
+    expect(safeImageSrc(null)).toBeUndefined();
+    expect(safeImageSrc(undefined)).toBeUndefined();
   });
 });
