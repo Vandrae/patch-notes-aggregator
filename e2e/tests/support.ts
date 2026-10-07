@@ -2,7 +2,9 @@ import { expect, type Page } from '@playwright/test';
 
 export const STEAM = `http://localhost:${process.env.FAKE_STEAM_PORT ?? 9099}`;
 
-let nextSteamId = 76561198000001000n;
+// Random start, not a fixed one: Playwright restarts its worker after a failed test, which would otherwise hand out the
+// same ids again, and a later test would then sign in as an earlier test's user (and find their games already followed).
+let nextSteamId = 76561198000000000n + BigInt(Math.floor(Math.random() * 1_000_000_000)) * 1000n;
 
 /** A SteamID nobody has used in this run, so each test starts with its own empty account. */
 export function newSteamId(): string {

@@ -117,6 +117,33 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, `ns:${OPENID_NS}\nis_valid:${valid}\n`, 'text/plain');
   }
 
+  // The publishers of games that are not on Steam, in the two shapes the app reads: Roblox's developer forum (an RSS feed)
+  // and Minecraft's help centre (Zendesk's article list). Dates are relative to now so the notes always look recent.
+  if (url.pathname === '/publisher/roblox.rss') {
+    calls.push({ kind: 'publisher-rss' });
+    const item = (n, hours) => `
+      <item>
+        <title>Release Notes for ${n}</title>
+        <link>https://devforum.roblox.com/t/release-notes-for-${n}/${n}</link>
+        <pubDate>${new Date(Date.now() - hours * 3600_000).toUTCString()}</pubDate>
+        <guid isPermaLink="false">devforum.roblox.com-topic-${n}</guid>
+        <description><![CDATA[<p>Hey everyone, release notes ${n} are here:</p><ul><li>Studio is faster to open</li><li>Fixed a physics crash</li></ul>]]></description>
+      </item>`;
+    return send(res, 200, `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>Release Notes - Developer Forum</title><link>https://devforum.roblox.com/c/updates/release-notes/62</link>${item(900, 3)}${item(899, 200)}</channel></rss>`,
+      'application/rss+xml');
+  }
+  if (url.pathname === '/publisher/minecraft.json') {
+    calls.push({ kind: 'publisher-help-center' });
+    const article = (id, title, hours) => ({
+      id, title, draft: false,
+      html_url: `https://feedback.minecraft.net/hc/en-us/articles/${id}`,
+      created_at: new Date(Date.now() - hours * 3600_000).toISOString(),
+      body: `<p>${title}</p><h2>Fixes</h2><ul><li>Fixed the llama spitting at the wrong target</li><li>Fixed a crash in caves</li></ul>`,
+    });
+    return send(res, 200, { articles: [article(5001, 'Minecraft Java Edition - 99.1', 5), article(5000, 'Minecraft: Bedrock Edition 99.0 Hotfix Changelog', 90)] });
+  }
+
   if (url.pathname === '/ISteamNews/GetNewsForApp/v2/') {
     const appid = url.searchParams.get('appid');
     calls.push({ kind: 'news', appid });

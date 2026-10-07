@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:discourse="http://www.discourse.org/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Release Notes - Developer Forum | Roblox</title>
+    <link>https://devforum.roblox.com/c/updates/release-notes/62</link>
+    <description>Topics in the &#39;Release Notes&#39; category Release notes on new Roblox versions</description>
+    <language>en</language>
+      <lastBuildDate>Wed, 30 Sep 2026 21:50:53 +0000</lastBuildDate>
+      <atom:link href="https://devforum.roblox.com/c/updates/release-notes/62.rss" rel="self" type="application/rss+xml" />
+        <item>
+          <title>Release Notes for 741</title>
+          <dc:creator><![CDATA[EndlessSashimi]]></dc:creator>
+          <category>Release Notes</category>
+          <description><![CDATA[
+            <p>Hey everyone, release notes are here:</p>
+<ul>
+<li>Introduced in 741: <a href="https://create.roblox.com/docs/release-notes/release-notes-741" class="inline-onebox">Introduced in version 741 | Documentation - Roblox Creator Hub</a></li>
+<li>Live as of this week: <a href="https://create.roblox.com/docs/updates/2026-09-28" class="inline-onebox">Week of September 28, 2026 | Documentation - Roblox Creator Hub</a></li>
+</ul>
+<p>We’re continuing to make… let’s call them very slow improvements to our processes and code with the goal of making the release notes status more granular and accurate. Thanks as always for being here with us in the release notes threads.</p>
+            <p><small>20 posts - 18 participants</small></p>
+            <p><a href="https://devforum.roblox.com/t/release-notes-for-741/4906281">Read full topic</a></p>
+          ]]></description>
+          <link>https://devforum.roblox.com/t/release-notes-for-741/4906281</link>
+          <pubDate>Wed, 30 Sep 2026 21:50:53 +0000</pubDate>
+          <discourse:topicPinned>No</discourse:topicPinned>
+          <discourse:topicClosed>No</discourse:topicClosed>
+          <discourse:topicArchived>No</discourse:topicArchived>
+          <guid isPermaLink="false">devforum.roblox.com-topic-4906281</guid>
+          <source url="https://devforum.roblox.com/t/release-notes-for-741/4906281.rss">Release Notes for 741</source>
+        </item>
+<item>
+          <title>Release Notes for 740</title>
+          <dc:creator><![CDATA[TooManyOveralls]]></dc:creator>
+          <category>Release Notes</category>
+          <description><![CDATA[
+            <p>Howdy! I hope you all are having a great day. Here are the release notes:</p>
+<ul>
+<li>Version 740: <a href="https://create.roblox.com/docs/release-notes/release-notes-740">Introduced in version 740</a></li>
+<li>Weekly update: <a href="https://create.roblox.com/docs/updates/2026-09-21">Week of September 21, 2026</a></li>
+</ul>
+            <p><small>17 posts - 15 participants</small></p>
+            <p><a href="https://devforum.roblox.com/t/release-notes-for-740/4888724">Read full topic</a></p>
+          ]]></description>
+          <link>https://devforum.roblox.com/t/release-notes-for-740/4888724</link>
+          <pubDate>Tue, 22 Sep 2026 23:41:30 +0000</pubDate>
+          <discourse:topicPinned>No</discourse:topicPinned>
+          <discourse:topicClosed>No</discourse:topicClosed>
+          <discourse:topicArchived>No</discourse:topicArchived>
+          <guid isPermaLink="false">devforum.roblox.com-topic-4888724</guid>
+          <source url="https://devforum.roblox.com/t/release-notes-for-740/4888724.rss">Release Notes for 740</source>
+        </item>
+<item>
+          <title>Release Notes for 739</title>
+          <dc:creator><![CDATA[linksgoat]]></dc:creator>
+          <category>Release Notes</category>
+          <description><![CDATA[
+            <p>Hi Creators!</p>
+<p>Today marks the day that Steve Jobs quit <img src="https://doy2mn9upadnk.cloudfront.net/images/emoji/twitter/red_apple.png?v=14" title=":red_apple:" class="emoji" alt=":red_apple:" loading="lazy" width="20" height="20"> in 1985 and rejoined in 1997. In related news, we also have something that went away and came back: the old, versioned release notes!</p>
+<p>We messed up on the recent changes (my bad!), so we’re doing a few things to alleviate that. <a href="https://create.roblox.com/docs/releases">This page</a> explains how our release notes work now, so, check it out for more information when you have a few. In the meantime, on to the updates:</p>
+<ul>
+<li>
+<p>Numbered version pages are back. These show the items introduced in each version just like how they used to be. We omitted the Live/Pending status this time around, as they are described by the weekly and pending page variants.</p>
+</li>
+<li>
+<p>Weekly updates are still here, and each item links to its introduction version. Features and fixes can be introduced, but their functionality might be gated behind a flag before they are broadly available. This page lets you know what we deem live every week, even if it was introduced weeks ago. We make a best effort to accurately update this page and have a weekly checkin to keep this data current.</p>
+</li>
+<li>
+<p>Pending updates focus on recent introductions that are not live yet. The default view covers the last 30 days, with a <strong>Show all</strong> button for older pending items.</p>
+</li>
+</ul>
+<p>We hope these changes are a step toward making release notes more useful and dependable, so thanks for your patience as we make things better.</p>
+<h2><a name="p-14840717-one-more-thing-1" class="anchor" href="https://devforum.roblox.com#p-14840717-one-more-thing-1"></a>One more thing</h2>
+<p>We’re working on additional features for release notes and API documentation as we speak, and we’d love your help shaping it.  If you’re interested in giving early feedback, reply here and I’ll reach out later. After all, you and I know the real ones hang out in the weekly release notes. Thank you and happy creating!</p>
+<p>Oh yeah, here’s the release notes lol:</p>
+<p>Version 739: <a href="https://create.roblox.com/docs/release-notes/release-notes-739" class="inline-onebox">Introduced in version 739 | Documentation - Roblox Creator Hub</a><br>
+Weekly update: <a href="https://create.roblox.com/docs/updates/2026-09-14" class="inline-onebox">Week of September 14, 2026 | Documentation - Roblox Creator Hub</a></p>
+            <p><small>28 posts - 19 participants</small></p>
+            <p><a href="https://devforum.roblox.com/t/release-notes-for-739/4876745">Read full topic</a></p>
+          ]]></description>
+          <link>https://devforum.roblox.com/t/release-notes-for-739/4876745</link>
+          <pubDate>Thu, 17 Sep 2026 00:53:21 +0000</pubDate>
+          <discourse:topicPinned>No</discourse:topicPinned>
+          <discourse:topicClosed>No</discourse:topicClosed>
+          <discourse:topicArchived>No</discourse:topicArchived>
+          <guid isPermaLink="false">devforum.roblox.com-topic-4876745</guid>
+          <source url="https://devforum.roblox.com/t/release-notes-for-739/4876745.rss">Release Notes for 739</source>
+        </item>
+
+  </channel>
+</rss>
