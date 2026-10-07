@@ -21,6 +21,9 @@ const status = (overrides: Partial<CatalogStatus>): CatalogStatus => ({
   ...overrides,
 });
 
+/** The filters sit behind a "Filters" button that starts closed: this is what a person does to reach them. */
+
+const openFilters = async () => userEvent.click(await screen.findByRole('button', { name: /^filters/i }));
 describe('DiscoverPage', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -175,6 +178,7 @@ describe('DiscoverPage', () => {
       const { calls } = stubDiscover((url) => jsonResponse(gamesPage(url.includes('genre=RPG') ? [rpg] : [deadlock])));
       renderApp(<DiscoverPage />);
 
+      await openFilters();
       await userEvent.click(await screen.findByRole('button', { name: 'RPG' }));
       await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
 
@@ -191,6 +195,10 @@ describe('DiscoverPage', () => {
 
       await screen.findByText('Elden Ring');
       expect(calls.some((c) => c.url.includes('genre=ACTION&genre=RPG&minRating=9'))).toBe(true);
+      // closed, the Filters button counts them and each shows as a chip; opened, the same choices are pressed
+      expect(await screen.findByRole('button', { name: 'Filters, 3 active' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remove filter Action' })).toBeInTheDocument();
+      await openFilters();
       expect(await screen.findByRole('button', { name: 'Action' })).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -200,6 +208,7 @@ describe('DiscoverPage', () => {
 
       await screen.findByText('Elden Ring');
       expect(calls.some((c) => c.url.includes('age=MATURE'))).toBe(true);
+      await openFilters();
       expect(await screen.findByRole('button', { name: 'Mature 17+' })).toHaveAttribute('aria-pressed', 'true');
 
       await userEvent.click(screen.getByRole('button', { name: 'Teen' }));
@@ -222,6 +231,7 @@ describe('DiscoverPage', () => {
       renderApp(<DiscoverPage />, '/discover?genre=RPG');
 
       expect(await screen.findByText(/no games fit these filters\. try removing a genre or lowering the rating/i)).toBeInTheDocument();
+      await openFilters();
       await userEvent.click(screen.getByRole('button', { name: /clear filters/i }));
       expect(await screen.findByText('Deadlock')).toBeInTheDocument();
     });

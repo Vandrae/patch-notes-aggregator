@@ -883,3 +883,68 @@ a.article-game:hover {
 a.article-game {
   text-decoration: none;
 }
+
+/* ---------- the Filters button, its panel, and the chips shown while it is closed ---------- */
+.filter-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filter-toggle {
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.9rem;
+}
+.filter-icon {
+  flex: none;
+}
+.filter-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.75rem;
+  line-height: 20px;
+  text-align: center;
+}
+.filter-chevron {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.filter-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-summary:hover {
+  border-color: var(--accent);
+}
+.filter-panel {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.filter-panel[hidden] {
+  display: none;
+}
+.filter-label {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}

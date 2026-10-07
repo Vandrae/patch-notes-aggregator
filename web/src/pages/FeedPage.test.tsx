@@ -19,6 +19,9 @@ const page = (overrides: Partial<FeedPageData>): FeedPageData => ({
   ...overrides,
 });
 
+/** The filters sit behind a "Filters" button that starts closed: this is what a person does to reach them. */
+
+const openFilters = async () => userEvent.click(await screen.findByRole('button', { name: /^filters/i }));
 describe('FeedPage', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -213,6 +216,7 @@ describe('FeedPage', () => {
       const { calls } = stubFeed(eldenFeed);
       renderApp(<FeedPage />);
 
+      await openFilters();
       await userEvent.click(await screen.findByRole('button', { name: 'RPG' }));
       await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
 
@@ -237,6 +241,7 @@ describe('FeedPage', () => {
       await waitFor(() => expect(calls.some((c) => c.url.includes('gameId=2') && c.url.includes('genre=ACTION'))).toBe(true));
 
       // a filter the selected game still passes keeps it selected
+      await openFilters();
       await userEvent.selectOptions(screen.getByRole('combobox', { name: /rating/i }), 'Very Positive or better');
       await waitFor(() => expect(calls.some((c) => c.url.includes('gameId=2') && c.url.includes('minRating=8'))).toBe(true));
     });
@@ -262,6 +267,7 @@ describe('FeedPage', () => {
       const { calls } = stubFeed(() => jsonResponse(page({ totalItems: 1, totalPages: 1, items: [item(1, 'RuneScape: Dragonwilds')] })));
       renderApp(<FeedPage />, '/feed?game=1');
 
+      await openFilters();
       await userEvent.click(await screen.findByRole('button', { name: 'RPG' })); // Dragonwilds is not an RPG
       await waitFor(() => expect(calls.some((c) => c.url.includes('genre=RPG') && !c.url.includes('gameId='))).toBe(true));
     });
