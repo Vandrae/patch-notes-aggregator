@@ -2,6 +2,9 @@
 
 [![CI](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml/badge.svg)](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml)
 
+`main` is protected: every change goes through a pull request, and it can only be merged once all four CI jobs pass (the
+backend tests, the frontend tests, the real-browser tests, and a full Docker and MySQL smoke test). See [Testing and CI](docs/testing.md).
+
 Follow the games you play and read their official patch notes in one clean, newest-first feed. Search the whole Steam
 catalog (about 190,000 games), follow what you care about, and the app fetches each game's notes from its publisher, boils
 them down to a short plain-text excerpt, and links you to the full notes.
