@@ -45,3 +45,21 @@ and build on Node 24, the browser tests above, then the Docker image is built an
 and smoke-tested through Caddy (health, the web app, a client-side route, the API rejecting anonymous calls, http being redirected
 to https, the app's own port not being reachable, the security headers including HSTS, the memory limits being in force, the
 `prod` profile being active, Flyway applying its migrations on MySQL, and sign-in being rate limited). A failing backend test is shown as an annotation on the run page.
+
+## Screenshots
+
+The pictures in the README (`docs/screenshots/`) are generated, not drawn by hand, so they can be redone whenever the UI changes.
+They are not part of the test suite and need the real catalog, which a fresh checkout does not have: run the app once with
+`STEAM_API_KEY` set and let it import (see [the catalog](catalog-and-search.md)), build the jar, then:
+
+```bash
+./mvnw -DskipTests package
+cd e2e && npm install && npx playwright install chromium
+npm run screenshots
+```
+
+What it does (`e2e/screenshots/`): copies `data/patchnotes.mv.db` to one temporary folder (replaced on every run) and starts the packaged app on the copy
+(your real database is never opened; a forced stop can leave that one copy, about 200 MB, in the temp folder until the next run replaces it), with only sign-in faked by the same fake Steam the
+browser tests use, so no real account is involved. It then follows a few real games, waits for their real patch notes to
+arrive, and photographs the feed, a search, a game page and the feed at phone size in a headless browser. The patch notes are
+whatever the publishers posted that day, so the pictures change a little each time.

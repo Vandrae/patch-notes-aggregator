@@ -25,6 +25,33 @@ stack with HTTPS.
   it logs no addresses or secrets; rate limits protect the sign-in and the Steam calls; there is a privacy page and one
   button to delete your account.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/feed.png" alt="The feed: patch notes from League of Legends, Minecraft and Dota 2, newest first, each with a short excerpt and a link to the full notes">
+      <br><sub><b>The feed.</b> Patch notes from every game you follow, newest first: a short excerpt and a link to the full notes.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/discover.png" alt="Searching the catalog for 'witcher': covers, review ratings, age ratings and genres for each result, and a Watch button">
+      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games) with covers, review ratings, age ratings and genre filters.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/game.png" alt="A game's page for Counter-Strike 2: cover image, description, rating, how many people follow it and its patch-note history">
+      <br><sub><b>A game's page.</b> Cover, rating, how many people follow it, and its full patch-note history.</sub>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/feed-phone.png" alt="The feed on a phone" width="260">
+      <br><sub><b>On a phone.</b> The same app, laid out for a small screen.</sub>
+    </td>
+  </tr>
+</table>
+
+<sub>Taken from the real catalog with sign-in faked, so no one's account appears; regenerate them with `npm run screenshots` in `e2e/` ([how](docs/testing.md#screenshots)). Covers and patch-note excerpts belong to their games' publishers.</sub>
+
 ## Built with
 
 | | |
