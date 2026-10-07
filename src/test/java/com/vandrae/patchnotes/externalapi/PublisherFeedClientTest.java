@@ -25,6 +25,7 @@ class PublisherFeedClientTest {
     private String base;
     private final AtomicReference<String> userAgent = new AtomicReference<>();
     private final AtomicReference<String> accept = new AtomicReference<>();
+    private final AtomicReference<String> acceptEncoding = new AtomicReference<>();
 
     @BeforeEach
     void startServer() throws IOException {
@@ -39,6 +40,15 @@ class PublisherFeedClientTest {
         server.createContext("/html", exchange -> reply(exchange, 200, "<html><body>Just a moment...</body></html>"));
         server.createContext("/badjson", exchange -> reply(exchange, 200, "{\"articles\": [ SECRET-LOOKING-TEXT"));
         server.createContext("/huge", exchange -> reply(exchange, 200, "x".repeat(2_000)));
+        server.createContext("/gz", exchange -> {
+            acceptEncoding.set(exchange.getRequestHeaders().getFirst("Accept-Encoding"));
+            replyGzip(exchange, RSS);
+        });
+        server.createContext("/gzbomb", exchange -> replyGzip(exchange, "x".repeat(200_000))); // tiny download, large once unpacked
+        server.createContext("/riot", exchange -> reply(exchange, 200, "<html><body><script id=\"__NEXT_DATA__\" type=\"application/json\">"
+                + "{\"props\":{\"pageProps\":{\"page\":{\"blades\":[{\"items\":[{\"title\":\"Patch 9\",\"action\":{\"payload\":{\"url\":\"/en-us/news/patch-9\"}},"
+                + "\"publishedAt\":\"2026-10-05T18:00:00.000Z\",\"analytics\":{\"contentId\":\"abc.en-us\"},\"description\":{\"body\":\"Teaser\"}}]}]}}}}"
+                + "</script></body></html>"));
         server.createContext("/redirect", exchange -> {
             exchange.getResponseHeaders().add("Location", "/rss");
             exchange.sendResponseHeaders(302, -1);
@@ -59,6 +69,17 @@ class PublisherFeedClientTest {
         exchange.close();
     }
 
+    private static void replyGzip(com.sun.net.httpserver.HttpExchange exchange, String body) throws IOException {
+        var packed = new java.io.ByteArrayOutputStream();
+        try (var gzip = new java.util.zip.GZIPOutputStream(packed)) {
+            gzip.write(body.getBytes(StandardCharsets.UTF_8));
+        }
+        exchange.getResponseHeaders().add("Content-Encoding", "gzip");
+        exchange.sendResponseHeaders(200, packed.size());
+        exchange.getResponseBody().write(packed.toByteArray());
+        exchange.close();
+    }
+
     private PublisherFeedClient client(int maxBytes) {
         return new PublisherFeedClient(new PublisherFeedProperties(Duration.ofSeconds(2), Duration.ofSeconds(5), maxBytes,
                 "test-agent (+https://example.test)"));
@@ -72,6 +93,29 @@ class PublisherFeedClientTest {
         assertThat(posts.get(0).title()).isEqualTo("Patch 7");
         assertThat(userAgent.get()).isEqualTo("test-agent (+https://example.test)");
         assertThat(accept.get()).contains("rss");
+    }
+
+    @Test
+    void asksForACompressedAnswerAndUnpacksIt() {
+        assertThat(client(1_000_000).readRss(base + "/gz")).hasSize(1);
+        assertThat(acceptEncoding.get()).isEqualTo("gzip");
+    }
+
+    @Test
+    void theSizeLimitAppliesToTheUnpackedTextSoASmallDownloadCannotFillMemory() {
+        assertThatThrownBy(() -> client(10_000).readRss(base + "/gzbomb"))
+                .isInstanceOf(PublisherFeedException.class)
+                .hasMessageContaining("larger than 10000 bytes");
+    }
+
+    @Test
+    void readsARiotNewsPageFromItsEmbeddedDataInOneRequest() {
+        var posts = client(1_000_000).readRiotNews(base + "/riot");
+
+        assertThat(posts).hasSize(1);
+        assertThat(posts.get(0).title()).isEqualTo("Patch 9");
+        assertThat(posts.get(0).url()).isEqualTo(base + "/en-us/news/patch-9");
+        assertThat(posts.get(0).html()).isEqualTo("Teaser");
     }
 
     @Test

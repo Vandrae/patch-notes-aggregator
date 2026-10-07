@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.GZIPInputStream;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -50,6 +51,15 @@ public class PublisherFeedClient {
         return parsed(url, "application/json", PublisherFeedParsers::parseHelpCenter);
     }
 
+    /**
+     * The article list of a Riot Games news page (leagueoflegends.com, playvalorant.com), newest first. These sites publish no
+     * feed, but a news page carries its whole list, with a short teaser Riot wrote for each article, as data inside the
+     * page itself. One request to the list page is therefore all it takes; the articles themselves are never opened.
+     */
+    public List<PublisherPost> readRiotNews(String url) {
+        return parsed(url, "text/html", html -> PublisherFeedParsers.parseRiotNews(html, URI.create(url)));
+    }
+
     private List<PublisherPost> parsed(String url, String accept, Function<String, List<PublisherPost>> parser) {
         String body = fetch(url, accept);
         try {
@@ -68,14 +78,18 @@ public class PublisherFeedClient {
                 .timeout(props.readTimeout())
                 .header("User-Agent", props.userAgent())
                 .header("Accept", accept)
+                .header("Accept-Encoding", "gzip") // a news page is 430 KB of HTML but about 56 KB compressed: ask for less
                 .GET()
                 .build();
         try {
             HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            try (InputStream body = response.body()) {
+            try (InputStream raw = response.body()) {
                 if (response.statusCode() != 200) {
                     throw new PublisherFeedException("Feed " + feed + " answered HTTP " + response.statusCode());
                 }
+                boolean gzip = "gzip".equalsIgnoreCase(response.headers().firstValue("Content-Encoding").orElse(""));
+                // the size limit applies to what the text grows to once unpacked, so a tiny download cannot become a huge one
+                InputStream body = gzip ? new GZIPInputStream(raw) : raw;
                 byte[] bytes = body.readNBytes(props.maxBytes() + 1);
                 if (bytes.length > props.maxBytes()) {
                     throw new PublisherFeedException("Feed " + feed + " is larger than " + props.maxBytes() + " bytes");

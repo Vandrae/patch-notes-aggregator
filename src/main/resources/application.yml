@@ -56,6 +56,23 @@ app:
         sources:
           - kind: HELP_CENTER
             url: https://minecraftfeedback.zendesk.com/api/v2/help_center/en-us/sections/360001186971/articles.json?per_page=20&sort_by=created_at&sort_order=desc
+      # Riot Games publishes no feed. Its news pages carry their article list as data in the page, so each game is read from
+      # ONE page, never its articles, compressed (about 56 KB), and at most twice a day whatever the poller or the number
+      # of followers does (min-interval). Riot's robots.txt allows this; its terms do not address it either way.
+      - name: League of Legends
+        description: "Riot Games' team-based arena game, played by millions every day. Patch notes here are the official patch notes Riot publishes for each new patch."
+        popularity: 20000000
+        sources:
+          - kind: RIOT_NEWS
+            url: https://www.leagueoflegends.com/en-us/news/tags/patch-notes/
+            min-interval: 12h
+      - name: VALORANT
+        description: "Riot Games' tactical first-person shooter. Patch notes here are the official patch notes Riot publishes for each new patch."
+        popularity: 10000000
+        sources:
+          - kind: RIOT_NEWS
+            url: https://playvalorant.com/en-us/news/tags/patch-notes/
+            min-interval: 12h
   steam:
     api-key: ${STEAM_API_KEY:}
     news-count: 20
