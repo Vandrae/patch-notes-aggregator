@@ -6,7 +6,8 @@
   "description": "Browser tests of the packaged app, against a fake Steam (sign-in and news)",
   "scripts": {
     "test": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "screenshots": "playwright test -c playwright.screenshots.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

@@ -2,375 +2,100 @@
 
 [![CI](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml/badge.svg)](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml)
 
-A Spring Boot REST API that lets a user search a large catalog of games, build a
-personal watchlist, and get a news-feed-style view of recent patch notes for
-just the games they care about. Built to demonstrate skills a lot of junior
-Java portfolios skip: scheduled background jobs, third-party API integration,
-data normalization across inconsistent sources, and proper auth.
+Follow the games you play and read their official patch notes in one clean, newest-first feed. Search the whole Steam
+catalog (about 190,000 games), follow what you care about, and the app fetches each game's notes from its publisher, boils
+them down to a short plain-text excerpt, and links you to the full notes.
 
-**Status:** work in progress toward a production app. Done so far: **Steam-only sign-in**, the **full Steam catalog**
-(~190,000 games, imported automatically and kept current), search with genre / rating / age filters, watchlist,
-**adaptive** + on-demand patch-note fetching, a normalized feed, and a **React web UI** served by the same jar. Next:
-non-Steam games and production packaging (Docker, CI).
+It was built to demonstrate the parts of a backend that a lot of portfolio projects skip: **scheduled background jobs,
+third-party API integration, normalizing data from inconsistent sources, and real authentication**, plus the engineering
+around them: an enforced module structure, tests against a real MySQL and in a real browser, CI, and a production Docker
+stack with HTTPS.
 
-**The catalog:** on first start (or whenever it holds fewer than 1,000 games) the app imports every game from Steam's
-`IStoreService/GetAppList` in the background, about 15 seconds for the whole list, then refreshes nightly with only what
-changed. This needs `STEAM_API_KEY`; without one, only the starter game (Dragonwilds) is searchable and Discover says so.
-Search ignores case, accents, punctuation and trademark symbols ("half life 2" finds *Half-Life 2: Episode One™*). Results
-are ranked by one blended score, `relevance bonus + log10(1 + popularity)`, where the bonus is 3.0 for the exact name, 1.5 for a
-name starting with your text and 0 for one that merely contains it. Popularity is on a log scale, so an exact match beats a
-prefix match of similar popularity ("Portal" before "Portal 2"), but a game about 100x more popular can overtake an exact
-match: searching "war" puts WARDOGS, War Thunder and Warframe above an obscure game that happens to be called "WAR!". With
-no query, Discover lists the whole catalog most popular first. Each result shows Steam's cover
-image, a short description, and a "View on Steam" link with the Steam logo. Steam has many different games with the same name
-(three are called "Deadlock"), so popularity and that link are how you tell them apart.
+## What it does
 
-**Covers, icons, descriptions, genres, ratings and popularity** come from Steam's store API (`IStoreBrowseService/GetItems`, 200 games per request) in
-a second background job that runs after the catalog import. Popularity is `reviews + 10 × peak players on Steam's most-played
-chart`: reviews cover almost every game, and the chart covers hugely played games that have few or no reviews yet (Valve's
-Deadlock has none). It is a ranking heuristic, not a statistic. Steam throttles that endpoint hard (measured: about one request
-per 3 seconds, after which it answers HTTP 429), so the job is **one paced worker** that waits and retries the *same* batch when
-throttled, and fetches the most useful games first (the most-played chart, then recently updated games). The first run over the
-whole catalog therefore takes about **50 minutes** in the background; search works throughout and improves as it goes (Discover
-shows progress). After that only new, changed or stale (30 days) games are refreshed.
+- **Sign in with Steam** (OpenID 2.0, implemented by hand). No passwords and no email: Steam gives the app a SteamID and
+  your public name and avatar, and nothing else.
+- **Search every Steam game**, ranked by relevance and popularity, with genre, review-rating and age-rating filters.
+  [How the catalog works](docs/catalog-and-search.md).
+- **Follow games** and read a feed of their patch notes. Each game has its own page with its follower count and full
+  history. Only the games somebody follows are ever fetched, on an adaptive schedule that keeps API calls low.
+- **Games that are not on Steam** (Roblox, Minecraft, League of Legends, VALORANT) are read from the publishers' own feeds.
+  Adding another game that offers a feed is one entry of configuration, no code. [Details and the rules for adding one](docs/non-steam-games.md).
+- **Careful with other people's content and your data**: it keeps a short excerpt and a link back, never the full post;
+  it logs no addresses or secrets; rate limits protect the sign-in and the Steam calls; there is a privacy page and one
+  button to delete your account.
 
-**Genre, rating and age filters** (Discover and the feed) use three more things from that same request, so they cost no extra calls:
-the game's top store tags, of which Steam's ten standard genres (Action, Adventure, Casual, Indie, Massively Multiplayer,
-Racing, RPG, Simulation, Sports, Strategy) are kept, and Steam's own review level (1 Overwhelmingly Negative … 9 Overwhelmingly
-Positive; 0 = no reviews), and the ESRB age rating Steam shows (Everyone, Everyone 10+, Teen, Mature 17+, Adults Only 18+).
-Many games have no ESRB rating at all (free-to-play and Valve titles, for one), so they never pass an age filter. Pick any number
-of genres and any number of age ratings (a game matches if it has *at least one* of each) and a "this review rating or better"
-level; the three combine. On the feed the filter chooses *games*, so it only ever narrows the notes of games you already watch.
-All of it lives in the URL (`?genre=RPG&genre=ACTION&rating=8&age=MATURE`), so a filtered view survives a reload. A game whose details haven't
-been fetched yet has no genre, rating or age rating, so it's left out while a filter is on; Discover says so while the first run is going.
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/feed.png" alt="The feed: patch notes from League of Legends, Minecraft and Dota 2, newest first, each with a short excerpt and a link to the full notes">
+      <br><sub><b>The feed.</b> Patch notes from every game you follow, newest first: a short excerpt and a link to the full notes.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/discover.png" alt="Searching the catalog for 'witcher': covers, review ratings, age ratings and genres for each result, and a Watch button">
+      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games) with covers, review ratings, age ratings and genre filters.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/screenshots/game.png" alt="A game's page for Counter-Strike 2: cover image, description, rating, how many people follow it and its patch-note history">
+      <br><sub><b>A game's page.</b> Cover, rating, how many people follow it, and its full patch-note history.</sub>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/feed-phone.png" alt="The feed on a phone" width="260">
+      <br><sub><b>On a phone.</b> The same app, laid out for a small screen.</sub>
+    </td>
+  </tr>
+</table>
+
+<sub>Taken from the real catalog with sign-in faked, so no one's account appears; regenerate them with `npm run screenshots` in `e2e/` ([how](docs/testing.md#screenshots)). Covers and patch-note excerpts belong to their games' publishers.</sub>
+
+## Built with
+
+| | |
+|---|---|
+| Backend | Java 21, Spring Boot 4, Spring Modulith (module boundaries checked by a test), Spring Security, Spring Data JPA, Flyway |
+| Data | H2 for local runs, MySQL 8.4 for production |
+| Frontend | React 19, TypeScript, Vite, TanStack Query, React Router |
+| Run and ship | Docker, Caddy (automatic HTTPS), GitHub Actions |
+| Tests | JUnit, Testcontainers (real MySQL), Vitest and Testing Library, Playwright |
 
 ## Quick start
 
-Needs **JDK 21+** (check that `JAVA_HOME` points at one; the wrapper uses it). No database setup: it uses a
-file-backed H2 in `./data` by default.
+You need **JDK 21 or newer** (check that `JAVA_HOME` points at one). There is no database to set up: by default it uses a
+file-backed H2 in `./data`.
 
 ```bash
-./mvnw test                   # backend tests (Java only): module rules, Steam login security, catalog sync, details
-                              # pacing + rate limiting, search ranking (incl. a 150,000-game scale test), normalizer, HTTP flow
-./mvnw package                # tests + builds the web UI + one jar that serves both (first run downloads a local Node)
-java -jar target/patch-notes-aggregator-0.1.0-SNAPSHOT.jar      # then open http://localhost:8080
+./mvnw package                                              # tests, builds the web UI, and one jar that serves both
+java -jar target/patch-notes-aggregator-0.1.0-SNAPSHOT.jar  # then open http://localhost:8080
 ```
 
-`./mvnw package` installs a project-local Node into `web/node/` (nothing system-wide), runs the frontend tests and
-builds the UI into the jar. Use `-Dskip.frontend=true` for a faster Java-only build.
+The first `./mvnw package` downloads a project-local Node into `web/node/` (nothing system-wide). Add
+`-Dskip.frontend=true` for a faster, Java-only build.
 
-**Working on the UI:** run the backend, then in `web/` run `npm run dev` (needs Node on your PATH, or use `web/node/`).
-The dev server on <http://localhost:5173> proxies `/api` to the backend; start the backend with
-`PUBLIC_BASE_URL=http://localhost:5173` so Steam sends you back through the proxy.
+**Configuration** goes in a git-ignored `.env`: copy `.env.example` and fill in what you need.
 
-Secrets go in a git-ignored `.env` (copy `.env.example`). The Steam news endpoint is keyless; `STEAM_API_KEY` is used to
-look up your Steam name and avatar at login (login still works without it, with a generic name) and, shortly, for the
-full-catalog sync. Set `JWT_SECRET` (32+ chars) so sessions survive restarts. MySQL instead of H2: `docker compose up -d`,
-then run with `--spring.profiles.active=mysql`.
-
-**Tests against a real MySQL.** Most tests run on H2 in MySQL compatibility mode, which needs no setup but is not MySQL: it
-accepts some SQL that MySQL rejects and serialises writes that MySQL runs concurrently. `MySqlIntegrationTest` and
-`MySqlFetchStateConcurrencyTest` therefore start a throwaway MySQL 8.4 container with [Testcontainers](https://testcontainers.com)
-and run the production database setup against it: every Flyway migration plus Hibernate's schema check, the catalog import
-(accents, trademark signs, emoji, Japanese), search ranking and the genre / rating / age filters, watching a game through the
-persisted event registry, the feed API, account deletion, and the poller. They need Docker; without it they are **skipped, not
-failed**, so `./mvnw test` still works anywhere. CI always has Docker, runs them on every push, and fails if they were skipped.
-They have already earned their keep: they found that two fetches finishing together, or a fetch and the poller, could
-deadlock on MySQL when creating a game's schedule row (the fetch then failed until the next poll). H2 cannot show that, and
-`MySqlFetchStateConcurrencyTest` reproduces it on purpose (300 racing pairs) so it cannot come back.
-
-**With Docker** (the whole stack, no JDK or Node needed; you only need Docker):
-
-```bash
-cp .env.example .env          # fill in JWT_SECRET, MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD (and STEAM_API_KEY)
-docker compose -f compose.prod.yaml up -d --build
-docker compose -f compose.prod.yaml logs -f app      # then open https://localhost (your browser will warn: Caddy signs it itself)
-```
-
-How it fits together:
-
-- The **`Dockerfile` has two stages.** The first (a full JDK) runs the same `./mvnw package` as above, which also builds the web
-  UI. The second (a JRE only) receives just the finished jar, so the image holds no source, compilers or Node. It runs as a
-  non-root user and has a health check against `/actuator/health/readiness`. Dependencies are resolved before the source is
-  copied, so editing code does not re-download them.
-- **`.dockerignore`** keeps `.env`, `data/`, build output and `.git` out of the build, so a secret can never end up inside an image.
-- **`compose.prod.yaml`** starts [Caddy](https://caddyserver.com), the app and MySQL 8.4. Caddy (configured by the `Caddyfile`) is
-  the only one with published ports (80 and 443): it gets and renews a free Let's Encrypt certificate for `DOMAIN` by itself,
-  redirects http to https and forwards requests to the app over the private network, telling it the visitor's address. MySQL
-  keeps its data in a named volume (`down` keeps it, `down -v` wipes it); the app starts only once MySQL is healthy. Each
-  container has a memory limit sized for a 2 GB machine (app 800 MB, MySQL 512 MB, Caddy 128 MB; MySQL is also trimmed to a
-  128 MB cache and no performance schema). Each container's log is capped at 30 MB (three files of 10 MB, oldest dropped), because
-  Docker otherwise keeps logs forever and the poller writes all day. Required secrets are written `${NAME:?message}`, so compose refuses to start when
-  one is missing instead of running without it. Set `DOMAIN` and `PUBLIC_BASE_URL=https://<DOMAIN>` when you deploy (https
-  also turns on the Secure cookie flag); without them the stack runs at `https://localhost`.
-- `compose.yaml` (without `.prod`) is the development one: only a MySQL with its port open, for `--spring.profiles.active=mysql`.
-
-**The `prod` profile** (`SPRING_PROFILES_ACTIVE=prod`; `compose.prod.yaml` uses `prod,mysql`). It adds `application-prod.yml` and two startup
-checks, so a deployment that would be unsafe or quietly broken fails at startup with a clear message instead of coming up:
-
-- **`JWT_SECRET` must be set** (32+ characters). Without it the app would invent a random signing key on every start, signing
-  everyone out and breaking any second instance.
-- **`PUBLIC_BASE_URL` must be an https address**, because the session cookie and the Steam sign-in redirect must not travel
-  over plain http. `http://localhost` is the one exception, so you can try the production setup on your own machine
-  (with a warning in the log). A missing `STEAM_API_KEY` only logs a warning: the app works but cannot import the catalog.
-- The profile also turns on **graceful shutdown** (in-flight requests and a running poll tick get up to 30 seconds), **error
-  responses without messages or stack traces**, **response compression**, trusting a reverse proxy's `X-Forwarded-*`
-  headers (`FORWARD_HEADERS_STRATEGY`, default `native`: Tomcat believes them only on connections from private-network
-  addresses such as Caddy on the Docker network, and reads the visitor's address from the right of `X-Forwarded-For`, where a
-  visitor cannot write; set it to `none` when nothing is in front of the app, and never publish the app's own port), and
-  exposes only `/actuator/health` over HTTP (metrics are recorded but not exposed).
-
-**Security headers** (every profile, on every response): a strict **Content-Security-Policy** (scripts, styles, fonts and
-connections only from the app's own origin, images also from Steam's CDN, no inline script, no eval, no framing, no plugins),
-`Referrer-Policy: no-referrer`, a `Permissions-Policy` that switches off camera, microphone, geolocation, payment and USB,
-`Cross-Origin-Opener-Policy: same-origin`, plus Spring Security's defaults (`X-Content-Type-Options`, `X-Frame-Options: DENY`,
-no caching of API responses, and `Strict-Transport-Security` for one year on https requests). The policy was checked in a
-browser against every page (feed, Discover, watchlist, account) with no violations.
-
-**Browser tests** (`e2e/`, [Playwright](https://playwright.dev) driving Chromium) run the *packaged* app, the same jar that ships,
-through a real browser. Steam is replaced by a small fake (`e2e/fake-steam.mjs`) that serves the OpenID sign-in page, answers
-`check_authentication` the way Steam does (it vouches only for a response it issued, and only once) and serves a news feed, so
-the tests are offline and repeatable. They cover the whole journey: being sent to sign in and coming back, signing in through
-Steam, finding a game, following it, its patch notes appearing in the feed (and press coverage not), the session surviving a
-reload, unfollowing, signing out, and deleting the account; and the security-relevant paths: a sign-in response that was not
-asked for, a genuine one replayed after signing out, a `next` that points at another site, API calls without a session or
-without the anti-forgery header, and the sign-in rate limit with its on-screen message. To run them locally:
-
-```bash
-./mvnw -DskipTests package                    # builds the jar the tests start
-cd e2e && npm install && npx playwright install chromium
-npx playwright test                           # starts the fake Steam (port 9099) and the app (port 8089) itself
-```
-
-They use their own in-memory database and nothing in `.env`. The last test uses up the sign-in allowance on purpose, so it is
-named to run last. On failure CI keeps a report with traces and screenshots as a build artifact.
-
-**Continuous integration** (`.github/workflows/ci.yml`, on every push): the backend tests on JDK 21 (including the real-MySQL tests above), the frontend typecheck, tests
-and build on Node 24, the browser tests above, then the Docker image is built and the production compose stack is started against a real MySQL 8.4
-and smoke-tested through Caddy (health, the web app, a client-side route, the API rejecting anonymous calls, http being redirected
-to https, the app's own port not being reachable, the security headers including HSTS, the memory limits being in force, the
-`prod` profile being active, Flyway applying its migrations on MySQL, and sign-in being rate limited). A failing backend test is shown as an annotation on the run page.
-
-**Signing in:** there are no passwords. Open <http://localhost:8080>, click **Sign in through Steam**, sign in on Steam's own
-page, and you are sent back signed in (an HttpOnly session cookie). The app has a feed (with a per-game filter), game
-discovery with search and a one-click Watch (each patch note shows its game's Steam icon, falling back to an initials tile until the icon has been fetched), a game page for each game (cover, how many follow it, its patch-note history; reached by clicking a game's name), a watchlist, and an account page (sign out / delete account).
-
-| Method | Route | Notes |
-|---|---|---|
-| GET | `/api/auth/steam/login?next=/path` | public; redirects to Steam. `next` must be a same-site path |
-| GET | `/api/auth/steam/callback` | public; Steam returns here; verifies, creates/updates the user, sets the session cookie |
-| POST | `/api/auth/logout` | clears the session cookie |
-| GET / DELETE | `/api/me` | who am I (401 = signed out) / delete my account and watchlist |
-| GET | `/api/games?q=&genre=&minRating=&age=&page=&size=` · `/api/games/{id}` | catalog search (name contains, case-insensitive); `genre` and `age` (ESRB, e.g. `TEEN`) are repeatable (any of), `minRating` is Steam's 1-9 review level |
-| GET | `/api/catalog/filters` | the genres, review ratings and age ratings the filters offer |
-| GET | `/api/games/{id}/patch-notes?page=&size=` | one game's stored patch notes, newest first, for any signed-in user (not limited to your watchlist); `emptyState` says why there are none: `NOT_TRACKED` (nobody follows the game, so it was never fetched) or `NO_ARTICLES_YET`; 404 for a game not in the catalog |
-| GET | `/api/games/{id}/activity` | how many people follow the game (a count, never who), when its newest patch notes came out, and how many there are |
-| GET | `/api/watchlist` | caller's watchlist |
-| PUT / DELETE | `/api/watchlist/{gameId}` | idempotent add (201 new / 204 already / 409 when the list is full) and remove; 429 when done too quickly (see Rate limits) |
-| GET | `/api/feed?page=&size=&gameId=&genre=&minRating=&age=` | patch notes for watched games, newest first; `gameId` narrows to one watched game, `genre`/`minRating`/`age` to watched games that match; `emptyState` explains an empty page |
-
-Everything except the `/api/auth/steam/**` routes, logout and `/actuator/health` requires a session. The browser session
-is an HttpOnly cookie, so writes from the browser must echo the `XSRF-TOKEN` cookie in an `X-XSRF-TOKEN` header (CSRF
-protection). Scripts can instead send `Authorization: Bearer <jwt>`, which needs no CSRF header. User-scoped routes take
-the user from the verified token's subject, never from the URL. Steam only reveals a SteamID (no email), which is all we store
-besides your display name and avatar.
-
-## Rate limits
-
-Three things cost something that a stranger could run up: starting a sign-in, finishing one (the app asks Steam to confirm
-it), and following games (each new game gets fetched from Steam). Each has a limit, hand-written as an in-memory token bucket
-(a burst allowance that refills steadily; no extra dependency, and it forgets everything on restart):
-
-| What | Limited per | Default (burst, then per minute) | When refused |
-|---|---|---|---|
-| Starting a sign-in (`GET /api/auth/steam/login`) | client address | 20, 20 | redirect to `/login?error=rate-limited`, with `Retry-After` |
-| Finishing a sign-in (`GET /api/auth/steam/callback`) | client address | 10, 10 | the same redirect |
-| Checks sent to Steam, from all sign-ins together | the whole app | 60, 1200 | the same redirect (applied after the cheap local checks, so forged callbacks cannot use it up) |
-| Following or unfollowing a game (`PUT`/`DELETE /api/watchlist/{id}`) | signed-in user | 60, 60 | `429` problem document with `Retry-After` |
-| Games on one list | signed-in user | 500 in total | `409` with a plain explanation |
-
-Reading is never limited. The browser shows "Too many sign-in attempts" on the login page and "Slow down" / "List full" on the
-Watch button. Change a limit with, for example, `APP_SECURITY_RATE_LIMIT_LOGIN_BURST=5` or `APP_WATCHLIST_MAX_GAMES=200` (the
-keys are `app.security.rate-limit.{login,callback,watch,steam-checks}.{burst,per-minute}`, `app.security.rate-limit.enabled`
-and `app.security.rate-limit.max-tracked-keys`; memory is bounded because a bucket is dropped once it has refilled).
-
-**Which address is "the client"?** The limiter only ever uses the address Tomcat reports for the connection. Behind Caddy
-(`server.forward-headers-strategy=native`, the `prod` default) Tomcat replaces it with the visitor's address from
-`X-Forwarded-For`, reading from the right and only through private-network proxies, so a header a visitor sends cannot give
-them a fresh allowance. This is tested over real HTTP (`ClientAddressBehindProxyTest`, `ClientAddressDirectTest`), because
-mock requests cannot show it. IPv6 visitors are grouped by /64 (one home network), since one person has billions of addresses.
-Refusals are counted in the `patchnotes.ratelimit.refused{rule}` metric and logged as one summary line a minute, without addresses.
-
-## Deploy on one EC2 instance (about $20 a month)
-
-This is meant for a portfolio project, not for wide use: one small machine runs everything with `compose.prod.yaml`. An AWS
-Free plan account gets credits that cover a good part of this for the first months; check what yours has, and check current
-prices, because the figures below are from the us-east-1 price list at the time of writing.
-
-| Item | Roughly per month |
+| Setting | What it does |
 |---|---|
-| EC2 `t3.small` (2 vCPU, 2 GB) | $15 |
-| Public IPv4 address (AWS now charges for every one) | $3.65 |
-| 20 GB gp3 disk | $1.60 |
-| Domain name (outside AWS if you like) | about $1 (a year costs $10 to $15) |
+| `STEAM_API_KEY` | Lets the app import the full Steam catalog and read your Steam name and avatar at sign-in. [Get a key](https://steamcommunity.com/dev/apikey). Without one, only a starter game is searchable. |
+| `JWT_SECRET` | Signs the session cookie (32+ random characters; `openssl rand -base64 48`). Without it a random one is made on every start and everyone is signed out on restart. |
 
-`t4g.small` (ARM) is about 20% cheaper. Docker builds the image on the machine itself, so it would build for ARM by itself, but CI
-only tests x86, so the guide uses `t3.small`.
+On the first start the catalog imports in about 15 seconds, and covers, ratings and genres fill in over the next hour or so
+in the background. Search works throughout.
 
-1. **Launch the instance.** Ubuntu Server 24.04 LTS, `t3.small`, 20 GB gp3 storage, and a key pair for SSH.
-2. **Security group** (the firewall): allow **22 from your own IP only**, **80 and 443 from anywhere**. Open nothing else:
-   not 8080 (the app), not 3306 (MySQL).
-3. **Give it a fixed address.** Allocate an Elastic IP and attach it to the instance, then create a DNS **A record** for your
-   domain pointing at it. Caddy needs the record in place before it can get a certificate.
-4. **Add swap, then install Docker.** Building the image needs more than 2 GB for a few minutes, so add a swap file first:
+**Other ways to run it**
 
-   ```bash
-   sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
-   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-   curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker $USER   # log out and back in afterwards
-   ```
+- **Working on the UI:** start the backend with `PUBLIC_BASE_URL=http://localhost:5173`, then in `web/` run `npm run dev`
+  (the dev server on <http://localhost:5173> proxies `/api` to the backend).
+- **MySQL instead of H2:** `docker compose up -d`, then run with `--spring.profiles.active=mysql`.
+- **The whole production stack** (the app, MySQL and HTTPS) with one command: see [deployment](docs/deployment.md).
 
-5. **Get the code and configure it.**
+## Architecture at a glance
 
-   ```bash
-   git clone https://github.com/Vandrae/patch-notes-aggregator.git && cd patch-notes-aggregator
-   cp .env.example .env && nano .env
-   ```
-
-   Set `JWT_SECRET` (`openssl rand -base64 48`), `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `STEAM_API_KEY`, `DOMAIN=your.domain`
-   and `PUBLIC_BASE_URL=https://your.domain`.
-6. **Start it.** The first build takes several minutes.
-
-   ```bash
-   docker compose -f compose.prod.yaml up -d --build
-   docker compose -f compose.prod.yaml logs -f app
-   ```
-
-   Then open `https://your.domain` and sign in through Steam. To update later: `git pull`, then run the same `up -d --build`.
-7. **Back up the database.** Everything that matters is in MySQL (a copy of Steam's catalog and your users' lists; the patch
-   notes themselves can be fetched again). A nightly dump, kept off the machine, is enough:
-
-   ```bash
-   docker compose -f compose.prod.yaml exec -T mysql sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction patchnotes' \
-     | gzip > backup-$(date +%F).sql.gz            # then copy it away, for example: aws s3 cp backup-*.sql.gz s3://<your-bucket>/
-   gunzip < backup-2026-01-01.sql.gz | docker compose -f compose.prod.yaml exec -T mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" patchnotes'   # restore
-   ```
-
-   Put the first line in a cron job, and consider an EBS snapshot schedule (Amazon Data Lifecycle Manager) as a second safety net.
-8. **Set a budget alert first.** In the AWS console, Billing and Cost Management, then Budgets: create a monthly cost budget of
-   about $10 with an email alert at 80%. A surprise bill is the real risk of a hobby deployment.
-9. **To pause spending**, stop the instance: compute billing stops, but the disk and the IPv4 address keep billing (a few dollars).
-   To stop everything, take a backup, terminate the instance, and release the Elastic IP.
-
-## Games that are not on Steam
-
-Some of the most-watched games are not on Steam at all (Minecraft, Roblox, League of Legends, Fortnite, World of Warcraft…).
-They are added by **configuration, not code**: an entry under `app.custom.games` in `application.yml` names the game and the
-feed its patch notes are read from. At startup each entry is put in the catalog (searchable, followable, with its own game
-page, like any other game), and from then on the same polling, storage and feed as Steam games apply to it.
-
-```yaml
-app:
-  custom:
-    games:
-      - name: Roblox
-        description: "…two plain sentences for the game's page…"
-        popularity: 20000000        # only where it sorts when browsing Discover; it orders, it does not measure
-        sources:
-          - kind: RSS               # an RSS 2.0 or Atom feed (this one is a Discourse forum category)
-            url: https://devforum.roblox.com/c/updates/release-notes/62.rss
-```
-
-Three kinds of source are understood: `RSS` (RSS 2.0 and Atom, including a Discourse forum category's `.rss`), `HELP_CENTER` (a
-Zendesk help centre's public article list) and `RIOT_NEWS` (a Riot Games news page, see below). A game may have several
-sources, which are combined, and one being down does not stop the others. Feeds must be https and are read politely: an
-honest `User-Agent` naming this project, a 5 MB cap, a 15 second timeout, compressed transfer, and the same adaptive
-schedule as Steam games (a quiet game is asked about once a day). The publisher's own link goes with every note, and only a
-short plain-text excerpt is kept, as for Steam.
-
-**Registered now:** Roblox (the Roblox developer forum's release-notes feed), Minecraft (the official release changelogs for
-Java and Bedrock, from Mojang's help centre), and League of Legends and VALORANT (Riot Games' official patch notes).
-
-**The rule.** A game is added when its publisher itself offers its patch notes publicly and in a form meant to be read by a
-program, with one deliberate, narrow exception: Riot Games. The most-streamed non-Steam games were checked in October 2026:
-
-| Game | What I found | Verdict |
-|---|---|---|
-| Roblox | official RSS (Discourse category) | **added** |
-| Minecraft | official help-centre API with dates, text and links | **added** |
-| League of Legends, VALORANT | no feed, but the news page carries its article list as data | **added**, read as little as possible (below) |
-| Teamfight Tactics | its notes are on a separate site with a different layout | not added |
-| Clash Royale | blog is a web page, no feed | not added |
-| Star Citizen | the "RSS" address returns a web page | not added |
-| World of Warcraft, Hearthstone | no feed at the addresses tried | not added |
-| Fortnite, Rocket League, Tibia | behind a Cloudflare bot check | not added: that check is not something to get around |
-| Genshin Impact, Mobile Legends | not investigated (mobile or launcher only) | not added |
-| Pokémon and other Nintendo titles | no public patch-note feed | not added |
-
-### Riot Games (the exception, and how it is kept small)
-
-Riot publishes no feed. Its news pages are built with Next.js, which leaves the data a page was built from inside the page: a
-list of every patch-notes article with its title, link, date and a short teaser Riot wrote. So one request to the list page
-is enough, and an article page is never opened. What was checked first: Riot's `robots.txt` allows all crawlers; its
-[terms of service](https://www.riotgames.com/en/terms-of-service) ban "bots and automation programs that interact with the Riot
-Services" (section 7.1), which is aimed at game cheats and does not mention reading the website; and its fan-content policy
-([Legal Jibber Jabber](https://www.riotgames.com/en/legal)) says nothing about automated access but asks for a notice that
-the project is not endorsed by Riot, which the privacy page and the footer carry. This is a judgement call, not a permission:
-Riot has not agreed to it. So it is kept as gentle as it can be and still work:
-
-- **One page per game**, about 56 KB with compression, never an article.
-- **At most twice a day per page** (`min-interval: 12h`), enforced inside the app: however often the poller asks and however
-  many people follow the game, the last answer is reused and nothing is sent. A failed read is remembered for up to 30
-  minutes, so a page that has changed shape is not asked for again and again.
-- **Honest identification**: the `User-Agent` names this project and its address.
-- **Only the teaser and a link back** are stored, as for every game.
-- **It fails loudly.** The page is read by the shape of its data, not its position; if that shape disappears the read is an
-  error (visible in the logs, and the game backs off), never an empty list that looks like "no new patch".
-- **A test guards the gentleness**: `ShippedCustomGamesTest` fails if a Riot page's minimum gap is shortened below 12 hours.
-
-If Riot ever asks for this to stop, remove the two entries (and the `RIOT_NEWS` kind): nothing else depends on them.
-
-Turning other publishers' web pages into feeds is not done: it breaks whenever a site changes, and a bot check is a clear
-"no". If a publisher later offers a feed, adding the game is one entry.
-
-What these games lack compared to Steam games: no cover art, genres, ratings or "View on Steam" link (their line says "Patch
-notes from the publisher" instead), and their Discover position comes from the configured `popularity`, not from reviews.
-
-## Steam's terms and the content shown
-
-The [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) are short, and this is how the app stands against
-each point that applies (read them yourself before you deploy; this is a summary, not legal advice):
-
-| Term (paraphrased) | What the app does |
-|---|---|
-| At most 100,000 API calls a day | The poller is adaptive (see above), so a watched game costs between 1 and 96 calls a day, and only games somebody watches are polled. There is **no daily counter**: the protections are the schedule, the 5 requests per second pacing, standing down for 30 seconds when Steam answers 429, and the cap of 500 games per person. Check `patchnotes.fetch.polls` if you ever suspect you are near the limit. |
-| Only fetch Steam data when users ask for it | Nothing is fetched for a game until somebody watches it, and a game nobody watches loses its schedule. The catalog import is the one exception: a daily job that lists Steam's games so they can be searched. |
-| Show Valve branding (name, logo, links) where the API is used | The footer of every signed-in page says "Powered by Steam", the Steam logo marks Steam-sourced games, and sign-in uses Steam's own page. The footer links "Steam" to the Steam store. |
-| Do not suggest the app is endorsed by or affiliated with Valve | The footer says "Not affiliated with Valve". |
-| Keep the API key confidential | The key is read from `STEAM_API_KEY` (never committed; `.env` is git-ignored and `.dockerignore`d) and is sent only to Steam, only on the catalog and profile calls (the news calls are keyless). It is in the URL, and Spring's I/O errors quote the URL, so Steam failures are described by kind and HTTP status only (`SteamHttp.describe`); tests make a network error that quotes the URL and check the key appears in no exception, stack trace or log line. See "What is logged" below. |
-| Post a privacy policy for any non-public data | The app stores only public data: your SteamID, public display name and avatar address, and the games you follow. No email, no password, no IP addresses (the rate limiter keeps them in memory only, briefly). The public `/privacy` page (linked from the sign-in page and the footer) says this in plain words, and the account page deletes everything. |
-
-**Publishers' content.** Patch notes belong to the games' publishers. The app stores only a plain-text excerpt of at most 280
-characters, plus the title, date, and a hash of the full text (used to notice silent edits), never the full post and never its
-images. Each note links back to the original post on Steam, which opens in a new tab with `rel="noopener noreferrer"`. Game
-artwork is loaded from Steam's own CDN rather than copied. Excerpts are rendered as text, never as HTML. Games that are not on Steam get the same treatment from the publisher's own public feed: a plain-text excerpt, the date, and a link to the publisher's post (which must be a plain https address, or the post is skipped).
-
-**What is logged.** The app writes no request log (the `prod` profile switches Tomcat's access log off explicitly, and a test
-checks it), Caddy's access log is not enabled in the `Caddyfile`, and the root log level is `INFO`. The lines that do exist are
-about what the app is doing, not about who asked: poll and sync summaries, game names, and the internal number of a user who
-signed in. Nothing logs a session cookie, a JWT, a SteamID, an IP address, or the parameters of a sign-in response (rejected
-sign-ins say only why, for example "return_to does not match this login attempt"; rate-limit refusals are a count a minute).
-The two config objects that hold secrets (`SteamProperties`, `JwtProperties`) print `<set>` instead of the secret, so even
-logging one by mistake leaks nothing. If you ever turn on an access log, drop the query string for `/api/auth/**`, whose
-callback carries Steam's one-time signature, and do not lower the log level to `DEBUG` on a live site: that is where HTTP
-clients start logging URLs.
-
-## Modular monolith
-
-One deployable, eight modules. Each is a top-level package whose root holds its public API and whose
-`internal` sub-package is off limits to other modules. The allowed dependencies are declared in each module's
-`package-info.java` and **enforced by a test** ([ModularityTests](src/test/java/com/vandrae/patchnotes/ModularityTests.java),
-Spring Modulith), so a stray import across a boundary fails the build.
+One deployable application split into modules whose boundaries a test enforces, so a stray import across a boundary fails the
+build:
 
 ```mermaid
 graph LR
@@ -386,241 +111,42 @@ graph LR
   events -. GameWatched .-> fetch
 ```
 
-| Module | Responsibility |
+Following a game publishes an event; the fetch module reads that game's source (Steam's news API, or a publisher's feed),
+normalizes every item into one shape, and hands it to the feed module, which stores it and serves each user's feed. A
+scheduler then asks about each followed game again at a pace that depends on how recently it was patched.
+[Architecture in full](docs/architecture.md).
+
+## Documentation
+
+| | |
 |---|---|
-| `users` | accounts + watchlist ("User Watch"); no auth logic |
-| `security` | "Sign in through Steam" (OpenID 2.0), HS256 JWT session cookie, CSRF, HTTP security rules |
-| `catalog` | game catalog + search; seeded from `app.catalog.seed-games` |
-| `externalapi` | Steam client with timeouts and retry/backoff; returns Steam's own DTOs |
-| `fetch` | scheduled poller, on-demand fetch, `ArticleSource` adapters, normalizer |
-| `feed` | article storage (upsert + dedup) and the per-user feed endpoint |
-| `events` | shared event contracts (`GameWatched`, `ArticlesIngested`) |
-| `web` | serves the React app (built from `web/`) at its client-side routes |
+| [Architecture](docs/architecture.md) | the modules, how a request travels, the adaptive polling schedule, what Steam's data looks like |
+| [The catalog and search](docs/catalog-and-search.md) | importing every Steam game, ranking, covers, ratings and filters |
+| [Games that are not on Steam](docs/non-steam-games.md) | how they are added, which are, which are not and why, and how Riot's pages are read gently |
+| [API reference](docs/api.md) | every route, and how sessions and CSRF protection work |
+| [Security, privacy and compliance](docs/security-and-compliance.md) | headers, rate limits, what is logged, Steam's terms and how the app stands against them |
+| [Testing and CI](docs/testing.md) | the four test layers, the real-MySQL and browser tests, the pipeline |
+| [Deployment](docs/deployment.md) | the Docker stack, and a step-by-step guide for one small AWS server |
+| [Design notes](docs/design.md) | the original plan, the design decisions and edge cases, and the build order |
 
-![Architecture overview: the seven backend modules (Users, External APIs, Catalog, Security, Events, Feed, Fetch) and the three flows through them: flagging a game, finding patches, and the user opening the app](docs/architecture.png)
-
-*The design diagram: the modules on the bottom right, and how a request travels through them in each of the three flows.
-The diagram predates the `web` module, which only serves the React app.*
-
-The three flows from the design diagram map to code like this:
-
-- **Flagging a game:** `PUT /api/watchlist/{id}` → JWT check → catalog existence check → save → publish `GameWatched`.
-- **Finding patches:** `GameWatched` (immediately) or the adaptive scheduled poll (below) → fetch → Steam API → normalize → feed (upsert) → publish `ArticlesIngested`.
-- **User opens app:** JWT check → feed query scoped to the caller's watchlist.
-
-`GameWatched` is delivered through Modulith's persisted event registry, so an unprocessed event survives a crash
-and is re-published on restart. Nothing consumes `ArticlesIngested` yet; it is the hook for notifications.
-
-### Adaptive polling
-
-Asking Steam about every watched game every 30 minutes costs 48 calls a day per game whether it patches daily or yearly,
-which does not scale (5,000 watched games would be ~240,000 calls a day). Instead each watched game has its own schedule
-in `game_fetch_state`, and the poller wakes every 30 seconds to take whichever games are due.
-
-- **When to look again** (`PollSchedule`, pure arithmetic): after a successful poll, the wait is the time since the game's
-  newest patch note divided by 4, kept between 15 minutes and 24 hours. A game patched an hour ago is checked within the
-  hour; one patched last week, daily; a game with no patch notes (or no news feed) daily. A new patch note snaps a quiet game
-  back to frequent checks by itself, with no counters to keep. Waits are shortened by up to 10% at random so games do not all
-  fall due together; because jitter only shortens, **no watched game goes unchecked for more than 24 hours**.
-- **Failures** back off on their own schedule (5 minutes, doubling, up to 6 hours) and never delay other games.
-- **Pacing:** requests leave at a steady 5 per second (measured: Steam's news API did not throttle 100 uncached requests at
-  about 4 per second). If Steam answers HTTP 429 the poller slows down, stands down for 30 seconds and leaves the rest due.
-  Retrying a 429 immediately would only count against the limit, so the news client reports it instead of retrying.
-- **On demand:** starting to watch a game still fetches it at once, and that fetch sets the game's schedule too, so it is not
-  polled again straight away. Games nobody watches lose their schedule row and are never polled.
-- **Metrics** (Micrometer; deliberately not exposed over HTTP, since there is no one to look at a dashboard and every public route is surface to defend): `patchnotes.fetch.polls` by outcome, `patchnotes.fetch.articles`,
-  `patchnotes.fetch.tracked`, `patchnotes.fetch.due` and `patchnotes.fetch.lag.seconds` (how long the most overdue game has
-  waited; a number that keeps growing means the poller cannot keep up). Decided: they stay unexposed. The per-tick "Poll tick" log
-  line, Steam throttling warnings and the rate-limit summary line are the signals to watch in `docker compose logs`. If you ever want
-  live metrics, a management port reachable only over SSH is the way; the security rules would need a small change for it.
-- **Tuning** is under `app.fetch` in `application.yml`. The 24-hour cap comes from one method, `PollSchedule.maxIntervalFor`,
-  which is where a slower tier (say weekly checks for games with no patch note in a year) will plug in.
-
-With the illustrative mix of 5% busy, 25% moderate and 70% quiet games, 5,000 watched games come to roughly 22,000 calls a day
-instead of 240,000 (an estimate, not a measurement). One instance only: the overlap guard is in-memory, so several instances
-would need a lease on the state rows.
-
-### What the Steam data actually looks like
-
-Checked against the live API for Dragonwilds, and the normalizer's tests use these real titles:
-
-- The feed mixes developer posts (`feed_type=1`) with press and SteamDB links (`feed_type=0`); only the former can be patch notes.
-- The `patchnotes` tag is only set on *some* real patches ("1.0.0.5 Patch Notes" lacks it), and the other tags are moderation noise.
-- Many real patches never say "patch": "0.12.0.4 is live!". Meanwhile "An Update From Mod Dutch", "Update Survey" and
-  "0.12.1 Preview" say "update" or carry a version number but aren't patches.
-
-So classification is: developer tag → trusted; otherwise first-party only, then title heuristics (patch/hotfix/changelog,
-`Update N`, or a 3+ part version number) minus survey/preview/roadmap. Bodies are BBCode (`[list][*][p]…`) and are
-flattened to a ≤280-char plain-text summary; a SHA-256 of the full body detects silent edits and updates the row in place.
-
----
-
-# Design Doc
-
-## Overview
-
-## Problem being solved
-
-There's no single API that returns patch notes for "most games." The real
-landscape:
-
-- **Steam** publishes a free, public API that covers thousands of games at
-  once — a catalog endpoint (`ISteamApps/GetAppList`) and a news endpoint
-  (`ISteamNews/GetNewsForApp`) that returns official updates as structured
-  JSON. No scraping required.
-- **Non-Steam titles** (WoW, League of Legends, Valorant, Escape from Tarkov,
-  and anything else run through its own launcher) aren't covered by Steam at
-  all. These need hand-written adapters — RSS parsing where available,
-  HTML scraping (Jsoup) where it isn't.
-
-So the design is a hybrid: Steam covers broad catalog + search "for free,"
-and a small, growing set of custom adapters cover the specific non-Steam
-games a user actually wants.
-
-## Architecture
+## Project layout
 
 ```
-Steam app list (~150k games)
-        │
-        ▼
-  Game catalog (cached locally, searchable)
-        │
-        ▼
-  User watchlist (which games a user follows)
-
-
-Steam News API ──┐
-                  ├──► Normalizer ──► Article table ──► Feed API
-Custom adapters ──┘      (maps every source into one
- (RSS / Jsoup for          common Article model)
-  non-Steam games)
+src/main/java/com/vandrae/patchnotes/   the backend, one package per module
+src/main/resources/                     configuration and the Flyway database migrations
+src/test/                               backend tests
+web/                                    the React app (built into the jar)
+e2e/                                    browser tests (Playwright) and the fake Steam they use
+docs/                                   the documentation above
+Dockerfile, compose.prod.yaml, Caddyfile  the production stack
+.github/workflows/ci.yml                the CI pipeline
 ```
 
-(The module map and the three request flows are drawn in the [architecture diagram](#modular-monolith) above.)
+## Status
 
-The scheduled poller only ever polls games that appear on **someone's**
-watchlist — not the full catalog. Both source types (Steam News API and
-custom adapters) implement the same interface and produce the same `Article`
-shape, so the rest of the pipeline doesn't care which source an article
-came from.
+Feature-complete and ready to deploy; not yet running on a public address. Ideas not built: a slower polling tier for games
+that have not been patched in a year, an OpenAPI description of the API, ending a session before its 7 days are up, and more
+non-Steam games (the rest of the most-streamed ones publish no official feed yet; see [the list](docs/non-steam-games.md)).
 
-## Core entities
-
-| Entity | Purpose |
-|---|---|
-| `Game` | id, name, `steamAppId` (nullable), `sourceType` enum (`STEAM_NEWS` / `CUSTOM`) |
-| `User` | standard user record for auth |
-| `Watchlist` | join table, `User` ↔ `Game` (many-to-many) |
-| `Article` | id, game (FK), title, url (unique-ish, see dedup note below), summary, `articleType` enum (`PATCH_NOTES` for now, room to add `NEWS`/`EVENT` later), publishedAt (UTC `Instant`), fetchedAt |
-
-## Design decisions & known edge cases
-
-**1. Only poll what's being watched.**
-The scheduled job queries `SELECT DISTINCT game_id FROM watchlist` fresh at
-the start of every tick — not a list held in memory — and reconciles its per-game
-schedule rows with it, so it's always correct even as users add/remove games
-between ticks. Polling the full
-150k-game catalog on a schedule would be wasteful and would get rate-limited
-fast.
-
-**2. Identifying "patch notes" vs. other content.**
-Check the source's structured category/tag field first (many RSS feeds
-already separate categories like `patch-notes` from `esports` or
-`community`). Fall back to keyword matching (`patch`, `update`, `hotfix`,
-`notes`) only when there's no structured tag — matching a single exact
-phrase like "patch notes" misses too many real variants
-("Hotfix 1.2", "VALORANT 9.10 Patch Notes", etc.).
-
-**3. Scraping fragility.**
-Any adapter that scrapes raw HTML (as opposed to parsing RSS/JSON) depends
-on that page's current layout. A site redesign can silently break a
-selector — the adapter won't crash, it'll just quietly return zero articles.
-Pollers need to log "this source returned nothing" per adapter so a broken
-one is noticed quickly rather than discovered weeks later.
-
-**4. Leave room for non-patch-note content later.**
-`Article.articleType` is an enum with just `PATCH_NOTES` for now. Costs
-nothing today; adding `NEWS` or `EVENT` later is a filter addition, not a
-schema migration. Steam makes this easy since its news API already returns
-more than just patch notes — custom adapters would need per-source work to
-support it, so this stays low priority for those.
-
-**5. Uniform date handling.**
-Every source's date format is different (RSS gives RFC-822, Steam News gives
-Unix timestamps, scraped HTML gives arbitrary text). The normalizer must
-convert every source's date into a single UTC `Instant` before it's
-persisted, so freshness checks and sorting work consistently regardless of
-where the article came from.
-
-**6. Dedup on more than just URL.**
-Same URL, changed content (e.g. a studio appends a "Hotfix (Aug 18)" section
-to an already-published patch notes page) shouldn't create a duplicate row
-or throw a constraint violation. Longer-term fix: compare a content hash on
-re-fetch and update the existing row if it changed, rather than a hard
-insert-or-fail on URL. Flagged as a stretch goal, not a launch blocker —
-most patch notes don't get silently edited after publishing.
-
-**7. Job overlap protection.**
-If a poll cycle runs longer than the scheduling interval, two cycles could
-run concurrently — doubling external API calls and risking duplicate
-inserts. Needs a simple "job already running" guard (or a library like
-ShedLock) before this goes live.
-
-**8. Rate limits and retries.**
-External calls (Steam API, scraped sites) need retry-with-backoff for
-transient failures, and should respect whatever rate limits each source
-documents. A single network blip shouldn't mark a source as permanently
-broken.
-
-**9. Search performance at scale.**
-150k+ cached rows means "search as you type" against an unindexed name
-column is a full table scan. An index on `name` covers the first pass;
-MySQL full-text search is worth a look once the catalog is fully loaded and
-search needs to feel snappier.
-
-**10. Auth is required for watchlists to mean anything.**
-Since a watchlist is per-user, every watchlist/feed endpoint needs to be
-scoped to the authenticated user via Spring Security + JWT — pulling the
-current user from `@AuthenticationPrincipal`, not trusting a `userId` passed
-in the URL (the difference between actually secure and only looking
-secure).
-
-**11. Empty states.**
-A brand-new user with no watchlist, or a freshly-added game with no
-articles yet, should render a clean "no news yet" / "add games to get
-started" state — not an error, not a blank screen.
-
-**12. Legal/ToS on scraped sources.**
-Worth a quick check of each non-Steam site's terms of service and
-`robots.txt` before scraping. Low risk for personal/portfolio use of public
-patch notes, but good practice — and a reasonable thing to mention if asked
-in an interview.
-
-## Build order
-
-> **Progress:** steps 1–6 are done and have grown since this list was written: sign-in is now Steam-only (OpenID) instead of
-> email and password, the catalog is every game on Steam (imported nightly) instead of one hardcoded game, polling is adaptive,
-> and there is a React app, Docker packaging, CI and browser tests. Step 7, non-Steam games, is **started**: any game whose
-> publisher offers an RSS/Atom feed or a Zendesk help centre is one configuration entry (see "Games that are not on Steam"),
-> and Roblox, Minecraft, League of Legends and VALORANT are in. The rest of the most-streamed non-Steam games publish their notes only as web pages or
-> behind bot checks, so they wait for a feed.
-
-1. Prove one data path end-to-end — pull Steam News API data for a single
-   hardcoded game, parsed into plain `Article` objects. No Spring yet.
-2. Spring Boot + JPA + MySQL skeleton — `Game`, `Article`, `User`,
-   `Watchlist` entities, basic CRUD.
-3. Spring Security with JWT — sign-in (now Steam OpenID), every watchlist/feed endpoint
-   scoped to the authenticated user.
-4. Game search + watchlist endpoints — search the catalog (now all of Steam), add/remove
-   games from your own watchlist.
-5. Scheduled poller — query distinct games across all watchlists, fetch,
-   normalize, dedupe. Build in job-overlap protection (#7) here.
-6. Feed endpoint — articles for the current user's watchlist, including the
-   empty-state handling (#11).
-7. Custom adapters (WoW, League, Valorant, Tarkov, etc.) once the Steam path
-   is solid — same normalizer, new source implementations.
-
-Items #6, #8, #9, #10, #12 above can be layered in as each relevant piece
-gets built rather than solved upfront.
-
-![Product Search](https://github.com/Vandrae/patch-notes-aggregator/blob/e9d164473e3e8058e39730a9f1c53e9344e49067/Screenshot%202026-08-17%20041726.png)
+*Not affiliated with Valve or Riot Games. Steam is a trademark of Valve Corporation; League of Legends and VALORANT are
+trademarks of Riot Games, Inc.*
