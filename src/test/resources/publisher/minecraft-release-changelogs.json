@@ -1,0 +1,42 @@
+{
+ "count": 3,
+ "next_page": null,
+ "page": 1,
+ "page_count": 1,
+ "per_page": 3,
+ "previous_page": null,
+ "articles": [
+  {
+   "id": 49175370527501,
+   "title": "Minecraft: Bedrock Edition 26.52 Hotfix Changelog",
+   "html_url": "https://feedback.minecraft.net/hc/en-us/articles/49175370527501-Minecraft-Bedrock-Edition-26-52-Hotfix-Changelog",
+   "draft": false,
+   "created_at": "2026-09-25T22:05:12Z",
+   "updated_at": "2026-09-25T22:08:48Z",
+   "section_id": 360001186971,
+   "body": "<p><strong>Posted:</strong> 25 September 2026<br><br>A new hotfix is rolling out to address issues found in the latest update. It will become available on each platform as it’s approved, so please allow a little time for it to reach you.</p><h2 id=\"user-content-stability-and-performance\">Stability and Performance<a aria-labelledby=\"user-content-stability-and-performance\" href=\"https://dev.azure.com/dev-mc/Minecraft/_wiki/wikis/Minecraft.wiki?wikiVersion=GBwikiMaster&amp;_a=edit&amp;pagePath=/Bedrock%20Release%20Schedule/Changelogs/Full%20Release%20Changelogs/R26U5%20Full%20Changelog/R26U5%20Hotfix%202&amp;pageId=41406&amp;anchor=stability-and-performance\"></a>\n</h2><ul>\n<li data-list-item-id=\"e3cac62ae0fd16a7546a31e5f4abdd836\">Improved stability for Nintendo Switch devices connected to a network</li>\n<li data-list-item-id=\"ed34c2f7fd76f1a442fb800bc611cf840\">Fixed an issue that could prevent the game from launching on some iOS devices (<a href=\"https://bugs.mojang.com/browse/MCPE-242503\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"https://bugs.mojang.com/browse/mcpe-242503\" aria-label=\"MCPE-242503 (Opens in new window or tab)\">MCPE-242503</a>)</li>\n</ul><h2 id=\"user-content-graphical\">Graphical<a aria-labelledby=\"user-content-graphical\" href=\"https://dev.azure.com/dev-mc/Minecraft/_wiki/wikis/Minecraft.wiki?wikiVersion=GBwikiMaster&amp;_a=edit&amp;pagePath=/Bedrock%20Release%20Schedule/Changelogs/Full%20Release%20Changelogs/R26U5%20Full%20Changelog/R26U5%20Hotfix%202&amp;"
+  },
+  {
+   "id": 48915928859789,
+   "title": "Minecraft: Bedrock Edition 26.51 Hotfix Changelog",
+   "html_url": "https://feedback.minecraft.net/hc/en-us/articles/48915928859789-Minecraft-Bedrock-Edition-26-51-Hotfix-Changelog",
+   "draft": false,
+   "created_at": "2026-09-15T16:33:28Z",
+   "updated_at": "2026-09-16T14:12:53Z",
+   "section_id": 360001186971,
+   "body": "<p><strong>Posted:</strong> 15 September 2026</p><p dir=\"auto\" data-line=\"0\">A new hotfix is rolling out to address issues found in the latest update. It will become available on each platform as it’s approved, so please allow a little time for it to reach you.</p><h2 id=\"h_01M2JYKG2ABFA22KXPBX07SAK6\">Stability and Performance</h2><ul><li data-list-item-id=\"ece9e4222851e85859c9c92fb95385d02\">Fixed a crash that could occur when loading a world containing large, densely connected structures of blocks such as fences, glass panes, iron bars, or walls (<a href=\"https://bugs.mojang.com/browse/MCPE-242312\" target=\"_blank\" rel=\"noopener noreferrer\" aria-label=\"MCPE-242312 (Opens in new window or tab)\">MCPE-242312</a><span role=\"presentation\" aria-hidden=\"true\"></span>)</li></ul>"
+  },
+  {
+   "id": 48913133328013,
+   "title": "Minecraft Java Edition - 26.3",
+   "html_url": "https://feedback.minecraft.net/hc/en-us/articles/48913133328013-Minecraft-Java-Edition-26-3",
+   "draft": false,
+   "created_at": "2026-09-15T15:13:33Z",
+   "updated_at": "2026-09-15T15:13:44Z",
+   "section_id": 360001186971,
+   "body": "<p>Published: 9/15/26<br> </p><div><div>\n<p>Wilderness Bound is out now in Minecraft Java Edition! Pack your supplies and set off on an expedition into the dappled forest where the trails end and adventure begins. Seek out abandoned camps, build outposts among the poplar trees, sleep under the stars on straw beds, and share campfire stories atop cushions. Just remember that the wilderness rewards the prepared - and maps are lighter than regrets!</p>\n<p>Happy camping!</p>\n<h2 id=\"h_01M2JT28WWA2273NRZVPJNGV1Y\">New Features</h2>\n<ul>\n<li data-list-item-id=\"e3528576dc04882fb63b9ceafd6549dd9\">Added Dappled Forest Biome</li>\n<li data-list-item-id=\"ee1fa6f5bff99634ab84fda0436bf913e\">Added Poplar Trees</li>\n<li data-list-item-id=\"e539e037917f5d00373ff7ce82ec6ff18\">Added fallen Poplar Trees</li>\n<li data-list-item-id=\"e776b7ab3c46b3f72a701af9e744ecdd7\">Added Red Poplar Leaves, Orange Poplar Leaves, and Yellow Poplar Leaves blocks</li>\n<li data-list-item-id=\"ec95971215731664c2664d68d841bc1bc\">Added Poplar wood set</li>\n<li data-list-item-id=\"ed3603f5f71cfb0e7beb597b8197692e4\">Added Shelf Mushrooms</li>\n<li data-list-item-id=\"e971a41ca4c4076aec692cd899d006931\">Added Red Shrubs</li>\n<li data-list-item-id=\"e2547704014c8560dc49db364cbdbe513\">Added Abandoned Camp structures</li>\n<li data-list-item-id=\"e3cf7bbbba6e958862660b96a8830aa6d\">Added new Explorer Maps</li>\n<li data-list-item-id=\"ebaab9c4f3e8eaf5338db381b37fc89ca\">Added Cushions</li>\n<li data-list-item-id=\"e337bdf5afd377fccd3a327d37f"
+  }
+ ],
+ "sort_by": "created_at",
+ "sort_order": "desc"
+}

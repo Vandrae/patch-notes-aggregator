@@ -184,6 +184,9 @@ jobs:
           docker compose -f compose.prod.yaml logs --no-color app | grep -E 'profiles are active: "prod", "mysql"'
           echo "migrations ran on MySQL"
           docker compose -f compose.prod.yaml logs --no-color app | grep -E 'Successfully applied [0-9]+ migrations?'
+          echo "the games that are not on Steam were registered on MySQL"
+          docker compose -f compose.prod.yaml logs --no-color app | grep -E "Custom game 'Roblox' .*1 source" > /dev/null
+          docker compose -f compose.prod.yaml logs --no-color app | grep -E "Custom game 'Minecraft' .*1 source" > /dev/null
           echo "memory limits are in force"
           docker inspect --format '{{.Name}} {{.HostConfig.Memory}}' $(docker compose -f compose.prod.yaml ps -q) | tee /dev/stderr | awk '$2 == 0 { bad = 1 } END { exit bad }'
           echo "log rotation is in force (an unbounded log fills a small disk)"

@@ -24,7 +24,7 @@ export function PrivacyPage() {
         <li>The games you follow, and when you last signed in.</li>
       </ul>
       <p>
-        Everything else on the site (games, patch notes) is public information from Steam. We keep a short excerpt of each patch
+        Everything else on the site (games, patch notes) is public information, from Steam or from the publisher's own feed (for games that are not on Steam). We keep a short excerpt of each patch
         note and a link to the original post, not the post itself.
       </p>
 

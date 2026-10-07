@@ -31,7 +31,7 @@ export function ArticleCard({ item, showGame = true }: { item: FeedItem; showGam
         {href ? (
           <a href={href} target="_blank" rel="noopener noreferrer">
             {item.title}
-            <span className="visually-hidden"> (opens on Steam in a new tab)</span>
+            <span className="visually-hidden"> (opens the full notes in a new tab)</span>
           </a>
         ) : (
           item.title

@@ -3,6 +3,8 @@ spring:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
 
 app:
+  custom:
+    enabled: false # the shipped non-Steam games would add rows to every test's catalog; the tests of them switch this on
   fetch:
     polling-enabled: false # tests trigger fetches explicitly; no background timer
   catalog:

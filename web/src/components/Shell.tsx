@@ -45,7 +45,7 @@ export function Shell() {
         <Outlet />
       </main>
       <footer className="footer">
-        Patch notes come from each game's official posts on Steam. Powered by{' '}
+        Patch notes come from each game's official posts, on Steam or the publisher's own site. Powered by{' '}
         <a href="https://store.steampowered.com/" target="_blank" rel="noopener noreferrer">
           Steam
         </a>

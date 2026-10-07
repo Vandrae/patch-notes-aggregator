@@ -74,6 +74,21 @@ public class CatalogService {
         return games.matching(ids, f.minRating, f.anyGenre, f.genres, f.anyAge, f.ages);
     }
 
+    /**
+     * Makes sure a game that is not on Steam exists in the catalog, and returns its id. Safe to call on every start: an
+     * existing game is kept (so people's watchlists stay valid) and only its description and ordering weight are refreshed.
+     *
+     * @param popularity where it sorts among Steam games when browsing, whose own weight is reviews plus ten times the
+     *                   peak players on Steam's charts; a game that is not on Steam has no such number, so one is given
+     */
+    @Transactional
+    public long ensureCustomGame(String name, String shortDescription, long popularity) {
+        Game game = games.findFirstByNameAndSourceType(name, SourceType.CUSTOM)
+                .orElseGet(() -> games.saveAndFlush(new Game(name, null, SourceType.CUSTOM)));
+        games.describeCustomGame(game.getId(), shortDescription, popularity);
+        return game.getId();
+    }
+
     public Optional<GameSummary> findById(long id) {
         return games.findById(id).map(this::toSummary);
     }

@@ -2,14 +2,17 @@ package com.vandrae.patchnotes.catalog.internal;
 
 import com.vandrae.patchnotes.catalog.AgeRating;
 import com.vandrae.patchnotes.catalog.Genre;
+import com.vandrae.patchnotes.catalog.SourceType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface GameRepository extends JpaRepository<Game, Long> {
 
@@ -70,4 +73,11 @@ public interface GameRepository extends JpaRepository<Game, Long> {
                         @Param("anyAge") boolean anyAge, @Param("ages") Collection<AgeRating> ages);
 
     boolean existsBySteamAppId(Long steamAppId);
+
+    Optional<Game> findFirstByNameAndSourceType(String name, SourceType sourceType);
+
+    /** Description and ordering weight for a game that is not on Steam (the details job only ever touches Steam games). */
+    @Modifying
+    @Query(value = "UPDATE game SET short_description = :description, popularity = :popularity WHERE id = :id", nativeQuery = true)
+    void describeCustomGame(@Param("id") long id, @Param("description") String description, @Param("popularity") long popularity);
 }

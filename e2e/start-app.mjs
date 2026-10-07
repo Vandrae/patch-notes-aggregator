@@ -27,6 +27,17 @@ const child = spawn(
     `--app.steam.base-url=${STEAM}`,
     '--app.security.jwt.secret=e2e-only-secret-e2e-only-secret-e2e-only',
     '--spring.datasource.url=jdbc:h2:mem:e2e;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1',
+    // The non-Steam games (Roblox, Minecraft) read the fake publishers on the fake Steam's port, not the real internet.
+    '--app.custom.games[0].name=Roblox',
+    '--app.custom.games[0].description=Test description for Roblox.',
+    '--app.custom.games[0].popularity=20000000',
+    '--app.custom.games[0].sources[0].kind=RSS',
+    `--app.custom.games[0].sources[0].url=${STEAM}/publisher/roblox.rss`,
+    '--app.custom.games[1].name=Minecraft',
+    '--app.custom.games[1].description=Test description for Minecraft.',
+    '--app.custom.games[1].popularity=20000000',
+    '--app.custom.games[1].sources[0].kind=HELP_CENTER',
+    `--app.custom.games[1].sources[0].url=${STEAM}/publisher/minecraft.json`,
     // Limits sized for this suite: it signs in about ten times from one address, then deliberately runs into the limit.
     // They refill slowly, so once the limit has been hit it stays hit for the rest of the run.
     '--app.security.rate-limit.login.burst=16', '--app.security.rate-limit.login.per-minute=1',

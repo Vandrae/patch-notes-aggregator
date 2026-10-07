@@ -262,6 +262,54 @@ only tests x86, so the guide uses `t3.small`.
 9. **To pause spending**, stop the instance: compute billing stops, but the disk and the IPv4 address keep billing (a few dollars).
    To stop everything, take a backup, terminate the instance, and release the Elastic IP.
 
+## Games that are not on Steam
+
+Some of the most-watched games are not on Steam at all (Minecraft, Roblox, League of Legends, Fortnite, World of Warcraft…).
+They are added by **configuration, not code**: an entry under `app.custom.games` in `application.yml` names the game and the
+feed its patch notes are read from. At startup each entry is put in the catalog (searchable, followable, with its own game
+page, like any other game), and from then on the same polling, storage and feed as Steam games apply to it.
+
+```yaml
+app:
+  custom:
+    games:
+      - name: Roblox
+        description: "…two plain sentences for the game's page…"
+        popularity: 20000000        # only where it sorts when browsing Discover; it orders, it does not measure
+        sources:
+          - kind: RSS               # an RSS 2.0 or Atom feed (this one is a Discourse forum category)
+            url: https://devforum.roblox.com/c/updates/release-notes/62.rss
+```
+
+Two kinds of source are understood: `RSS` (RSS 2.0 and Atom, including a Discourse forum category's `.rss`) and `HELP_CENTER`
+(a Zendesk help centre's public article list). A game may have several sources, which are combined, and one being down
+does not stop the others. Feeds must be https and are read politely: an honest `User-Agent` naming this project, a
+5 MB cap, 15 second timeout, and the same adaptive schedule as Steam games (a quiet game is asked about once a day). The
+feed's own link goes with every note, and only a short plain-text excerpt is kept, as for Steam.
+
+**Registered now:** Roblox (the Roblox developer forum's release-notes feed) and Minecraft (the official release changelogs
+for Java and Bedrock, from Mojang's help centre).
+
+**Why only those two.** The rule is: a game is added only when its publisher itself offers its patch notes publicly in a
+machine-readable form. Everything else on the most-streamed list was checked in October 2026:
+
+| Game | What I found | Verdict |
+|---|---|---|
+| Roblox | official RSS (Discourse category) | **added** |
+| Minecraft | official help-centre API with dates, text and links | **added** |
+| League of Legends, Teamfight Tactics, VALORANT | patch notes only as web pages, no feed | not added: would mean scraping the site |
+| Clash Royale | blog is a web page, no feed | not added |
+| Star Citizen | the "RSS" address returns a web page | not added |
+| World of Warcraft, Hearthstone | no feed at the addresses tried | not added |
+| Fortnite, Rocket League, Tibia | behind a Cloudflare bot check | not added: that check is not something to get around |
+| Genshin Impact, Mobile Legends | not investigated (mobile or launcher only) | not added |
+| Pokémon and other Nintendo titles | no public patch-note feed | not added |
+
+Turning a web page into a feed (scraping) is deliberately **not** done: it breaks whenever the site changes, usually needs
+the publisher's permission, and a bot check is a clear "no". If a publisher later offers a feed, adding it is one entry.
+What these games lack compared to Steam games: no cover art, genres, ratings or "View on Steam" link (their line says "Patch
+notes from the publisher" instead), and their Discover position comes from the configured `popularity`, not from reviews.
+
 ## Steam's terms and the content shown
 
 The [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) are short, and this is how the app stands against
@@ -279,7 +327,7 @@ each point that applies (read them yourself before you deploy; this is a summary
 **Publishers' content.** Patch notes belong to the games' publishers. The app stores only a plain-text excerpt of at most 280
 characters, plus the title, date, and a hash of the full text (used to notice silent edits), never the full post and never its
 images. Each note links back to the original post on Steam, which opens in a new tab with `rel="noopener noreferrer"`. Game
-artwork is loaded from Steam's own CDN rather than copied. Excerpts are rendered as text, never as HTML.
+artwork is loaded from Steam's own CDN rather than copied. Excerpts are rendered as text, never as HTML. Games that are not on Steam get the same treatment from the publisher's own public feed: a plain-text excerpt, the date, and a link to the publisher's post (which must be a plain https address, or the post is skipped).
 
 **What is logged.** The app writes no request log (the `prod` profile switches Tomcat's access log off explicitly, and a test
 checks it), Caddy's access log is not enabled in the `Caddyfile`, and the root log level is `INFO`. The lines that do exist are
@@ -526,9 +574,10 @@ in an interview.
 
 > **Progress:** steps 1–6 are done and have grown since this list was written: sign-in is now Steam-only (OpenID) instead of
 > email and password, the catalog is every game on Steam (imported nightly) instead of one hardcoded game, polling is adaptive,
-> and there is a React app, Docker packaging, CI and browser tests. Step 7, non-Steam games, is **not started**: the
-> `ArticleSource` interface and a `CUSTOM` source type exist, but no non-Steam source does. It needs a real, licence-friendly
-> feed to be found first, then an adapter and a table saying which feed belongs to which game.
+> and there is a React app, Docker packaging, CI and browser tests. Step 7, non-Steam games, is **started**: any game whose
+> publisher offers an RSS/Atom feed or a Zendesk help centre is one configuration entry (see "Games that are not on Steam"),
+> and Roblox and Minecraft are in. The rest of the most-streamed non-Steam games publish their notes only as web pages or
+> behind bot checks, so they wait for a feed.
 
 1. Prove one data path end-to-end — pull Steam News API data for a single
    hardcoded game, parsed into plain `Article` objects. No Spring yet.

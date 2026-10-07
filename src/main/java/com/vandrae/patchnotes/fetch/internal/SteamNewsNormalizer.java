@@ -6,11 +6,7 @@ import com.vandrae.patchnotes.feed.IncomingArticle;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -111,19 +107,10 @@ class SteamNewsNormalizer {
         text = WHITESPACE.matcher(text).replaceAll(" ").strip();
         text = text.replace(ESCAPED_OPEN, '[').replace(ESCAPED_CLOSE, ']');
 
-        if (text.length() <= SUMMARY_MAX_CHARS) {
-            return text;
-        }
-        int cut = text.lastIndexOf(' ', SUMMARY_MAX_CHARS);
-        return text.substring(0, cut > SUMMARY_MAX_CHARS / 2 ? cut : SUMMARY_MAX_CHARS).strip() + "\u2026";
+        return PlainText.truncate(text, SUMMARY_MAX_CHARS);
     }
 
     private static String sha256(String value) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is guaranteed by every JVM", e);
-        }
+        return PlainText.sha256(value);
     }
 }
