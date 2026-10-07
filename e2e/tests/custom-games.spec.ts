@@ -15,12 +15,16 @@ test('a game that is not on Steam: found by name, followed, and its notes read f
   await expect(row.getByText('Patch notes from the publisher')).toBeVisible();
   await expect(row.getByRole('link', { name: /view on steam/i })).toHaveCount(0);
 
-  // no cover art for it: the list shows its lettered tile, never a broken picture
-  await expect(row.locator('img.game-thumb')).toHaveCount(0);
+  // its logo, from this site, in the list: a real picture that loaded, not the lettered tile
+  const thumb = row.locator('img.game-thumb');
+  await expect(thumb).toHaveAttribute('src', '/art/roblox-cover.png');
+  expect(await thumb.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
 
   await row.getByRole('link', { name: 'Roblox', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Roblox' })).toBeVisible();
-  await expect(page.locator('img.game-cover')).toHaveCount(0);
+  const cover = page.locator('img.game-cover');
+  await expect(cover).toHaveAttribute('src', '/art/roblox-cover.png');
+  expect(await cover.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
   await expect(page.getByRole('heading', { name: 'Not tracked yet' })).toBeVisible();
 
   await page.getByRole('button', { name: /^watch roblox/i }).click();

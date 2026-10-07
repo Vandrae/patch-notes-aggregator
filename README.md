@@ -37,8 +37,8 @@ stack with HTTPS.
       <br><sub><b>The feed.</b> Patch notes from every game you follow, newest first: a short excerpt and a link to the full notes. The filters wait behind one button.</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/discover.png" alt="Discover: the most popular games first, with Steam covers beside League of Legends, Minecraft, Roblox and VALORANT, which are not on Steam">
-      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside.</sub>
+      <img src="docs/screenshots/discover.png" alt="Discover: the most popular games first, with Steam covers beside the logos of League of Legends, Roblox and VALORANT, which are not on Steam, and a lettered tile for Minecraft">
+      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside with their publishers' logos (Minecraft has none to use).</sub>
     </td>
   </tr>
   <tr>
@@ -167,5 +167,5 @@ Feature-complete and ready to deploy; not yet running on a public address. Ideas
 that have not been patched in a year, an OpenAPI description of the API, ending a session before its 7 days are up, and more
 non-Steam games (the rest of the most-streamed ones publish no official feed yet; see [the list](docs/non-steam-games.md)).
 
-*Not affiliated with Valve or Riot Games. Steam is a trademark of Valve Corporation; League of Legends and VALORANT are
-trademarks of Riot Games, Inc.*
+*Not affiliated with Valve, Riot Games, Roblox or Mojang. Steam is a trademark of Valve Corporation; League of Legends and VALORANT are
+trademarks of Riot Games, Inc.; Roblox is a trademark of Roblox Corporation; Minecraft is a trademark of Mojang Synergies AB.*

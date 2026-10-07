@@ -51,10 +51,23 @@ class ShippedCustomGamesTest {
 
     @Test
     void anyArtAShippedGameNamesIsAFileThatExists() throws IOException {
-        // no art ships today (the app draws a lettered tile), but a path that points at nothing would be a broken picture
+        // a path that points at nothing would be a broken picture
         for (CustomGame game : shipped()) {
             for (String path : java.util.stream.Stream.of(game.image(), game.icon()).filter(java.util.Objects::nonNull).toList()) {
                 assertThat(Path.of("web/public" + path)).as(game.name() + ": " + path).isRegularFile();
+            }
+        }
+    }
+
+    @Test
+    void theGamesWithArtAreExactlyTheOnesWhosePublishersOfferLogosInAPressKit() throws IOException {
+        // Minecraft is left out on purpose: Mojang offers nothing to download, so it keeps its lettered tile
+        var withArt = shipped().stream().filter(g -> g.image() != null && g.icon() != null).map(CustomGame::name).toList();
+
+        assertThat(withArt).containsExactlyInAnyOrder("Roblox", "League of Legends", "VALORANT");
+        for (CustomGame game : shipped()) {
+            for (String path : java.util.stream.Stream.of(game.image(), game.icon()).filter(java.util.Objects::nonNull).toList()) {
+                assertThat(java.nio.file.Files.size(Path.of("web/public" + path))).as(path).isLessThan(150_000); // a small copy, not a press-kit original
             }
         }
     }

@@ -71,15 +71,24 @@ Turning other publishers' web pages into feeds is not done: it breaks whenever a
 
 ## Artwork
 
-Steam games get their cover and icon from Steam. A game that is not on Steam has none: the app draws a lettered tile, and its
-page has no cover. That is on purpose. The publishers' official art could not be used: Riot's press page offers only logos, and
-Riot's fan-project rules ban its logos; Roblox does not allow its logo; Mojang's guidelines could not be read. Nothing is
-hotlinked from a publisher either.
+Steam games get their cover and icon from Steam. Roblox, League of Legends and VALORANT have a **logo** in the same two shapes
+(a 460 by 215 cover, a square icon), made from the logo files each publisher offers in its own press kit: the Roblox logo pack
+(about.roblox.com/press-kit), Riot's League of Legends logo and VALORANT logos (riotgames.com/en/press). Each is scaled, never
+stretched, onto a plain dark background and saved as a small PNG in `web/public/art/`. The files are served from this site and
+nothing is hotlinked. Minecraft has none: Mojang offers no press kit or asset kit to download, so it keeps its lettered tile.
 
-An entry can still name art (`image` and `icon`), which must be a file in this site's `/art/` folder (lower-case letters,
-digits and dashes; `.svg`, `.png`, `.webp` or `.jpg`); startup refuses a web address or any other path, and a test checks the
-file exists. No art ships today. If a publisher offers official art with a licence that fits, putting the file in
-`web/public/art/` and naming it in the entry is all it takes.
+Two things to know before relying on this:
+
+- **Riot's fan-project policy bans its logos.** It lets fan projects use its assets non-commercially "but you may not use any of
+  our logos or trademarks anywhere in your Project". The two Riot logos here are in the press kit Riot publishes, but they are
+  still logos, so they are the first thing to remove if Riot objects: delete the two `image`/`icon` pairs in `application.yml`.
+  The Roblox pack ships brand guidelines (no stretching, recolouring, effects or rotation), which these follow.
+- **The notices say so.** The footer and the privacy page name Roblox, Mojang and Riot as owners of their marks and say none of
+  them endorses this project.
+
+A game's `image` and `icon` must be a file in this site's `/art/` folder (lower-case letters, digits and dashes; `.svg`,
+`.png`, `.webp` or `.jpg`); startup refuses a web address or any other path, and a test checks the file exists. A game with
+no art still works: the app draws a lettered tile.
 
 What these games still lack compared to Steam games: genres, review ratings and a "View on Steam" link (their line says "Patch
 notes from the publisher" instead), and their Discover position comes from the configured `popularity`, not from reviews.
