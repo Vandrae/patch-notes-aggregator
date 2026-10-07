@@ -1,0 +1,47 @@
+name: Feedback
+description: Tell me what you think of Patch Notes - what confused you, what you'd like, or what works well.
+title: "[Feedback] "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking a look at Patch Notes. Honest feedback is the most useful thing you can give a project like this,
+        including "I didn't understand this" and "I expected something else".
+
+        **This page is public.** Please don't post passwords, API keys, or personal details (yours or anyone else's).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of feedback is this?
+      options:
+        - Something was confusing or hard to use
+        - An idea or a feature I'd like
+        - Something that works well
+        - A game I'd like added
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Your feedback
+      description: What happened, what you expected, or what you'd like. A sentence or two is plenty.
+      placeholder: "For example: I couldn't tell how to follow a game from the search results..."
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where in the app? (optional)
+      description: The feed, Discover, a game's page, the sign-in, the README or docs, or anything else.
+      placeholder: "e.g. Discover, searching for a game"
+  - type: dropdown
+    id: device
+    attributes:
+      label: What were you using? (optional)
+      options:
+        - Desktop or laptop
+        - Phone
+        - Tablet
+        - Not sure

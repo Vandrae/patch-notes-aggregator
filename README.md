@@ -132,6 +132,12 @@ scheduler then asks about each followed game again at a pace that depends on how
 | [Deployment](docs/deployment.md) | the Docker stack, and a step-by-step guide for one small AWS server |
 | [Design notes](docs/design.md) | the original plan, the design decisions and edge cases, and the build order |
 
+## Feedback
+
+Tried it, or just read the code? I'd like to hear what was confusing, what you'd add, or what worked. [Open a feedback
+issue](https://github.com/Vandrae/patch-notes-aggregator/issues/new?template=feedback.yml): it is a short form and takes a
+minute. Issues are public, so please leave out personal details.
+
 ## Project layout
 
 ```
