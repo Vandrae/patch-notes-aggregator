@@ -27,10 +27,13 @@ const child = spawn(
     `--app.steam.base-url=${STEAM}`,
     '--app.security.jwt.secret=e2e-only-secret-e2e-only-secret-e2e-only',
     '--spring.datasource.url=jdbc:h2:mem:e2e;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1',
-    // The non-Steam games (Roblox, Minecraft) read the fake publishers on the fake Steam's port, not the real internet.
+    // The non-Steam games (Roblox, Minecraft) read the fake publishers on the fake Steam's port, not the real internet. (A list set
+    // here replaces the one in application.yml entirely, so every field the tests rely on, art included, is repeated.)
     '--app.custom.games[0].name=Roblox',
     '--app.custom.games[0].description=Test description for Roblox.',
     '--app.custom.games[0].popularity=20000000',
+    '--app.custom.games[0].image=/art/roblox-cover.png',
+    '--app.custom.games[0].icon=/art/roblox-icon.png',
     '--app.custom.games[0].sources[0].kind=RSS',
     `--app.custom.games[0].sources[0].url=${STEAM}/publisher/roblox.rss`,
     '--app.custom.games[1].name=Minecraft',

@@ -42,7 +42,7 @@ class CustomGameRegistry implements ApplicationRunner {
             return;
         }
         for (CustomGame game : properties.games()) {
-            long id = catalog.ensureCustomGame(game.name(), game.description(), game.popularity());
+            long id = catalog.ensureCustomGame(game.name(), game.description(), game.popularity(), game.image(), game.icon());
             sourcesByGameId.put(id, game.sources());
             log.info("Custom game '{}' (id {}): {} source(s)", game.name(), id, game.sources().size());
         }

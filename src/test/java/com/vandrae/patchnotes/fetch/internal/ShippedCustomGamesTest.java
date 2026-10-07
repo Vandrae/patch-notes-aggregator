@@ -10,10 +10,12 @@ import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * The list of non-Steam games that ships in application.yml, read the way the app reads it. No database and no network:
@@ -45,6 +47,40 @@ class ShippedCustomGamesTest {
             assertThat(game.sources()).allSatisfy(source -> assertThat(source.url()).startsWith("https://"));
             assertThat(game.description()).as(game.name()).isNotBlank().hasSizeLessThanOrEqualTo(CustomGame.MAX_DESCRIPTION);
         }
+    }
+
+    @Test
+    void anyArtAShippedGameNamesIsAFileThatExists() throws IOException {
+        // a path that points at nothing would be a broken picture
+        for (CustomGame game : shipped()) {
+            for (String path : java.util.stream.Stream.of(game.image(), game.icon()).filter(java.util.Objects::nonNull).toList()) {
+                assertThat(Path.of("web/public" + path)).as(game.name() + ": " + path).isRegularFile();
+            }
+        }
+    }
+
+    @Test
+    void theGamesWithArtAreExactlyTheOnesWhosePublishersOfferLogosInAPressKit() throws IOException {
+        // Minecraft is left out on purpose: Mojang offers nothing to download, so it keeps its lettered tile
+        var withArt = shipped().stream().filter(g -> g.image() != null && g.icon() != null).map(CustomGame::name).toList();
+
+        assertThat(withArt).containsExactlyInAnyOrder("Roblox", "League of Legends", "VALORANT");
+        for (CustomGame game : shipped()) {
+            for (String path : java.util.stream.Stream.of(game.image(), game.icon()).filter(java.util.Objects::nonNull).toList()) {
+                assertThat(java.nio.file.Files.size(Path.of("web/public" + path))).as(path).isLessThan(150_000); // a small copy, not a press-kit original
+            }
+        }
+    }
+
+    @Test
+    void artThatIsNotOurOwnFileIsRefusedAtStartup() {
+        var sources = List.of(new CustomGamesProperties.Source(Kind.RSS, "https://a.test/feed.rss", Duration.ZERO));
+        for (String bad : List.of("https://cdn.publisher.example/logo.png", "/other/x.svg", "/art/../secret.svg", "/art/UPPER.svg", "/art/x.exe")) {
+            assertThatThrownBy(() -> new CustomGame("G", "d", 0, bad, null, sources))
+                    .as(bad).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("/art/");
+        }
+        assertThat(new CustomGame("G", "d", 0, "/art/fine-cover.svg", "/art/fine-icon.png", sources).image()).isEqualTo("/art/fine-cover.svg");
+        assertThat(new CustomGame("G", "d", 0, null, null, sources).icon()).isNull(); // art is optional
     }
 
     @Test

@@ -51,3 +51,15 @@ export function safeExternalUrl(url: string): string | undefined {
     return undefined;
   }
 }
+
+/** A game's own art, served from this site's /art/ folder (artwork made for this project, used for games that are not on Steam). */
+const OWN_ART = /^\/art\/[a-z0-9-]+\.(svg|png|webp|jpg)$/;
+
+/**
+ * Whether an image address may go into an <img>: a plain https address (Steam's image servers) or one of this site's own
+ * art files. Anything else (http, data:, javascript:, a protocol-relative "//host" address, another path on this site) is refused.
+ */
+export function safeImageSrc(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return url.startsWith('https://') || OWN_ART.test(url) ? url : undefined;
+}

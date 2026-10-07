@@ -42,11 +42,14 @@ app:
   # Games that are not on Steam, each with the official feed its patch notes are read from (see CustomGamesProperties).
   # Only feeds the publisher itself offers publicly, in a machine-readable form, belong here; a game whose notes exist only
   # as a web page is left out rather than scraped. "popularity" only decides where a game sorts when browsing Discover.
+  # "image" and "icon" are logos from the publishers' own press kits (docs/non-steam-games.md, "Artwork"); Minecraft has none to use.
   custom:
     games:
       - name: Roblox
         description: "The online platform where millions of people play and build games made by other players. Patch notes here are the engine release notes the Roblox team posts for developers."
         popularity: 20000000
+        image: /art/roblox-cover.png
+        icon: /art/roblox-icon.png
         sources:
           - kind: RSS
             url: https://devforum.roblox.com/c/updates/release-notes/62.rss
@@ -62,6 +65,8 @@ app:
       - name: League of Legends
         description: "Riot Games' team-based arena game, played by millions every day. Patch notes here are the official patch notes Riot publishes for each new patch."
         popularity: 20000000
+        image: /art/league-of-legends-cover.png
+        icon: /art/league-of-legends-icon.png
         sources:
           - kind: RIOT_NEWS
             url: https://www.leagueoflegends.com/en-us/news/tags/patch-notes/
@@ -69,6 +74,8 @@ app:
       - name: VALORANT
         description: "Riot Games' tactical first-person shooter. Patch notes here are the official patch notes Riot publishes for each new patch."
         popularity: 10000000
+        image: /art/valorant-cover.png
+        icon: /art/valorant-icon.png
         sources:
           - kind: RIOT_NEWS
             url: https://playvalorant.com/en-us/news/tags/patch-notes/

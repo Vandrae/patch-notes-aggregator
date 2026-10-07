@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Game } from '../types';
+import { safeImageSrc } from '../format';
 import { GameTile } from './GameTile';
 
 const HEIGHT = 42;
@@ -11,8 +12,8 @@ const WIDTH = Math.round(HEIGHT * (231 / 87));
  */
 export function GameThumb({ game }: { game: Game }) {
   const [broken, setBroken] = useState(false);
-  // images come from Steam's CDN; never render anything but a plain https URL into an <img>
-  const src = game.imageUrl?.startsWith('https://') ? game.imageUrl : undefined;
+  // images come from Steam's CDN, or this site's own art for games that are not on Steam: nothing else goes into an <img>
+  const src = safeImageSrc(game.imageUrl);
 
   if (src && !broken) {
     return (

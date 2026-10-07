@@ -72,6 +72,11 @@ export function PrivacyPage() {
         Patch Notes was created under Riot Games' "Legal Jibber Jabber" policy using assets owned by Riot Games. Riot Games does not
         endorse or sponsor this project. League of Legends and VALORANT are trademarks or registered trademarks of Riot Games, Inc.
       </p>
+      <p>
+        Roblox, the Roblox logo, Minecraft and Mojang are trademarks of their owners (Roblox Corporation and Mojang Synergies AB). The
+        League of Legends, VALORANT and Roblox logos on the games' entries come from those publishers' own press kits and only identify
+        the game; none of these companies endorses or sponsors this project.
+      </p>
       <p>Not affiliated with Valve. Steam and the Steam logo are trademarks of Valve Corporation.</p>
     </main>
   );
