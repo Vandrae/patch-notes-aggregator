@@ -49,6 +49,18 @@ logging one by mistake leaks nothing. If you ever turn on an access log, drop th
 callback carries Steam's one-time signature, and do not lower the log level to `DEBUG` on a live site: that is where HTTP
 clients start logging URLs.
 
+## Dependencies and the build
+
+- **Dependabot** (`.github/dependabot.yml`, with Dependabot alerts and security updates switched on in the repository settings)
+  watches the Java libraries, the web app and browser-test packages, the GitHub Actions and the Docker base images. A known
+  vulnerability in any of them raises an alert and a pull request; otherwise a weekly pull request groups the minor and patch
+  updates (a major version gets its own). Every such pull request runs the same four required checks, and nothing merges by itself.
+- **The GitHub Actions in `.github/workflows/ci.yml` are pinned to full commit hashes**, each with its version in a comment, not to a
+  tag like `v7`. A tag can be moved to different code after you reviewed it; a hash cannot. Dependabot keeps the hashes current.
+  The workflow also runs with read-only repository permissions and uses no secrets.
+- **Secrets:** the repository has GitHub secret scanning and push protection on, `.env` and `data/` are git-ignored and
+  kept out of the Docker build, and the development database in `compose.yaml` only listens on `127.0.0.1`.
+
 ## Steam's terms and the content shown
 
 The [Steam Web API Terms of Use](https://steamcommunity.com/dev/apiterms) are short, and this is how the app stands against
