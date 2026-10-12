@@ -13,6 +13,7 @@ export function GameTile({ name, size = 44, wide = false, fill = false }: { name
     <span
       className="game-tile"
       aria-hidden="true"
+      data-name={fill ? name : undefined}
       style={{
         width: fill ? '100%' : wide ? Math.round(size * WIDE_RATIO) : size,
         height: fill ? '100%' : size,

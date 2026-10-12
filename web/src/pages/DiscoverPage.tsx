@@ -1,12 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { FilterBar } from '../components/FilterBar';
 import { EmptyState, ErrorState, SkeletonList } from '../components/States';
-import { GameBadges } from '../components/GameBadges';
-import { GameMeta } from '../components/GameMeta';
-import { GameThumb } from '../components/GameThumb';
-import { WatchButton } from '../components/WatchButton';
+import { GameCard } from '../components/GameCard';
 import { isFiltering, useFilters } from '../filters';
 import { useDebounced, useDocumentTitle } from '../hooks';
 import { useCatalogStatus, useGames } from '../queries';
@@ -107,22 +103,7 @@ export function DiscoverPage() {
           </p>
           <ul className="tile-grid">
             {results.map((game) => (
-              <li key={game.id} className="tile">
-                <div className="tile-art">
-                  <GameThumb game={game} variant="tile" />
-                </div>
-                <div className="tile-body">
-                  <div className="tile-head">
-                    <Link className="row-title tile-title" to={`/games/${game.id}`}>
-                      {game.name}
-                    </Link>
-                    <WatchButton game={game} />
-                  </div>
-                  {game.shortDescription && <p className="row-desc">{game.shortDescription}</p>}
-                  <GameBadges game={game} />
-                  <GameMeta game={game} />
-                </div>
-              </li>
+              <GameCard key={game.id} game={game} />
             ))}
           </ul>
         </>

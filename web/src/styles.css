@@ -991,34 +991,37 @@ a.article-game {
   color: var(--muted);
 }
 
-/* ---------- Discover: a grid of big cover tiles ---------- */
+/* ---------- Discover: a grid of cover pictures that show their details on hover ---------- */
+/* the page with the grid is wider than the others, so each picture is big enough to carry its details */
+.page:has(.tile-grid),
+body:has(.tile-grid) .topbar-inner,
+body:has(.tile-grid) .tabs,
+body:has(.tile-grid) .footer {
+  max-width: 1120px;
+}
 .tile-grid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
 }
 .tile {
-  position: relative; /* the name's link stretches over the whole tile */
-  display: flex;
-  flex-direction: column;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid rgb(255 255 255 / 7%);
-  box-shadow: var(--shadow);
+  position: relative;
+  border-radius: 8px;
   overflow: hidden;
-  transition: transform 0.15s, border-color 0.15s;
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 .tile:hover,
 .tile:focus-within {
   transform: translateY(-2px);
-  border-color: rgb(177 186 255 / 45%);
+  box-shadow: 0 0 0 2px rgb(177 186 255 / 55%), var(--shadow);
 }
 .tile-art {
   aspect-ratio: 460 / 215;
-  background: var(--surface-2);
 }
 .game-thumb-tile {
   display: block;
@@ -1030,30 +1033,134 @@ a.article-game {
 .tile-art .game-tile {
   display: flex;
 }
-.tile-head {
+/* a picture-less tile names its game right under the initials (drawn from the attribute, so the name is not in the page twice) */
+.game-tile[data-name] {
+  flex-direction: column;
+}
+.game-tile[data-name]::after {
+  content: attr(data-name);
+  margin-top: 6px;
+  padding-inline: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+/* the details panel: covers the picture, faded out until the pointer or keyboard focus arrives */
+.tile-details {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 14px 10px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgb(10 12 18 / 90%), rgb(10 12 18 / 94%));
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.tile:hover .tile-details,
+.tile:focus-within .tile-details {
+  opacity: 1;
 }
 .tile-title {
+  flex: none; /* a flex item with overflow hidden may shrink to nothing: the name must keep its line */
   min-width: 0;
-  font-size: 1rem;
-  font-weight: 800;
-  line-height: 1.25;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-decoration: none;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .tile-title::after {
   content: '';
   position: absolute;
-  inset: 0; /* the name's link stretches over the whole tile, the button and the Steam link sit above it */
+  inset: 0; /* the name's link covers the whole card; the Watch button and the Steam link sit above it */
   z-index: 1;
 }
-.tile-head .btn {
+.tile-stats {
+  flex: none;
+  display: flex;
+  gap: 4px 20px;
+  margin: 0;
+}
+.tile-stats > div {
+  min-width: 0;
+}
+.tile-stats dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile-stats dt {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f2c14e;
+}
+.tile-stats dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+}
+.tile-rating-good {
+  color: var(--rating-good) !important;
+}
+.tile-rating-mixed {
+  color: var(--rating-mixed) !important;
+}
+.tile-rating-bad {
+  color: var(--rating-bad) !important;
+}
+.tile-desc {
+  flex: none;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #d5daea;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tile-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tile-foot-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.tile-cta {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.tile-foot .game-meta,
+.tile-foot .steam-link {
+  font-size: 0.78rem;
+}
+.tile-foot .steam-link {
+  position: relative;
+  z-index: 2;
+}
+.tile-foot .btn {
   position: relative;
   z-index: 2;
   flex: none;
@@ -1061,19 +1168,32 @@ a.article-game {
   padding: 4px 12px;
   font-size: 0.85rem;
 }
-.tile-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px 12px;
-}
-.tile-body .row-desc {
-  margin: 0;
-  font-size: 0.8rem;
-}
-.tile-body .steam-link {
-  position: relative;
-  z-index: 2;
+
+/* a touch screen cannot hover: keep a name and Watch strip over the bottom of every picture instead */
+@media (hover: none) {
+  .tile-details {
+    opacity: 1;
+    inset: auto 0 0 0;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 28px 10px 8px 12px;
+    background: linear-gradient(transparent, rgb(10 12 18 / 88%));
+  }
+  .tile-title {
+    font-size: 1rem;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    margin-bottom: 6px;
+  }
+  .tile-stats,
+  .tile-desc,
+  .tile-foot-text {
+    display: none;
+  }
+  .tile-foot {
+    margin-top: 0;
+  }
 }
 @media (max-width: 480px) {
   .tile-grid {
