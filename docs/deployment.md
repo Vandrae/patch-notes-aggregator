@@ -28,7 +28,7 @@ How it fits together:
   Docker otherwise keeps logs forever and the poller writes all day. Required secrets are written `${NAME:?message}`, so compose refuses to start when
   one is missing instead of running without it. Set `DOMAIN` and `PUBLIC_BASE_URL=https://<DOMAIN>` when you deploy (https
   also turns on the Secure cookie flag); without them the stack runs at `https://localhost`.
-- `compose.yaml` (without `.prod`) is the development one: only a MySQL with its port open, for `--spring.profiles.active=mysql`.
+- `compose.yaml` (without `.prod`) is the development one: only a MySQL with its port open on your own machine (127.0.0.1, not your network: its passwords are well known), for `--spring.profiles.active=mysql`.
 
 **The `prod` profile** (`SPRING_PROFILES_ACTIVE=prod`; `compose.prod.yaml` uses `prod,mysql`). It adds `application-prod.yml` and two startup
 checks, so a deployment that would be unsafe or quietly broken fails at startup with a clear message instead of coming up:

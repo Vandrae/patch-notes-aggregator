@@ -1,0 +1,55 @@
+# Dependabot opens a pull request when a library, a GitHub Action or a Docker base image has a newer version, and (with
+# Dependabot alerts and security updates switched on in the repository settings) as soon as a known vulnerability is
+# published for one of them. Every pull request runs the same four required checks as any other change, and nothing is
+# merged by itself: the checks are the safety net, a person presses merge.
+#
+# Updates that are only minor or patch releases arrive together in one pull request per area, so a week of small bumps
+# is one review and not twenty. A major version gets a pull request of its own, because that is the one that can break.
+version: 2
+updates:
+  # the Java side: Spring Boot, Spring Modulith, MySQL and H2 drivers, test libraries (pom.xml)
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      java-minor-and-patch:
+        update-types: [minor, patch]
+
+  # the web app (web/package.json)
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      web-minor-and-patch:
+        update-types: [minor, patch]
+
+  # the browser tests (e2e/package.json)
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      e2e-minor-and-patch:
+        update-types: [minor, patch]
+
+  # the actions in .github/workflows, pinned to full commit hashes: this keeps the hash and its version comment current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # the base images in the Dockerfile and the compose files (Temurin, MySQL, Caddy)
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
