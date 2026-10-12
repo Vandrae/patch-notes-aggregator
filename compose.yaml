@@ -8,7 +8,8 @@ services:
       MYSQL_PASSWORD: patchnotes
       MYSQL_ROOT_PASSWORD: root
     ports:
-      - "3306:3306"
+      # 127.0.0.1 only: this database has well-known passwords, so nothing else on your network may reach it
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
 
