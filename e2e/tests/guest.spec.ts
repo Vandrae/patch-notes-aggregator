@@ -52,3 +52,22 @@ test('signing in from where a guest was browsing brings them back to that page, 
   await expect(navLink(page, 'Watchlist')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign in with Steam', exact: true })).toHaveCount(0);
 });
+
+// On a phone a rule left over from the old list layout once squeezed every Discover picture into a small box in the tile's corner.
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test('each Discover picture fills its tile', async ({ page }) => {
+    await page.goto('/discover');
+    await page.getByRole('searchbox', { name: 'Search games' }).fill('roblox');
+    const tile = page.locator('li.tile').filter({ hasText: 'Test description for Roblox.' });
+    const picture = tile.locator('img.game-thumb-tile');
+    await expect(picture).toBeVisible();
+    await expect.poll(async () => (await picture.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0))).toBe(true);
+
+    const tileBox = (await tile.boundingBox())!;
+    const pictureBox = (await picture.boundingBox())!;
+    expect(pictureBox.width).toBeGreaterThanOrEqual(tileBox.width * 0.95);
+    expect(pictureBox.height).toBeGreaterThanOrEqual(tileBox.height * 0.9);
+  });
+});
