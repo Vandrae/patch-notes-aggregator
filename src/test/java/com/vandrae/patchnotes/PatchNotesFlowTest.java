@@ -55,11 +55,14 @@ class PatchNotesFlowTest {
     // ---------------------------------------------------------------- security
 
     @Test
-    void everyApiRouteRequiresASignedInUser() throws Exception {
-        for (String path : List.of("/api/feed", "/api/watchlist", "/api/games", "/api/games/1", "/api/me")) {
+    void everythingThatIsAboutAUserRequiresASignedInUser() throws Exception {
+        // a guest may browse the catalog and a game's page (see GuestBrowsingTest); the feed, the watchlist and the account are a person's own
+        for (String path : List.of("/api/feed", "/api/watchlist", "/api/me")) {
             mvc.perform(get(path)).andExpect(status().isUnauthorized());
         }
         mvc.perform(put("/api/watchlist/1").with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/watchlist/1").with(csrf())).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/me").with(csrf())).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/feed").header("Authorization", "Bearer not.a.jwt")).andExpect(status().isUnauthorized());
     }
 

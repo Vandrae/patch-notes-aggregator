@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -27,11 +28,16 @@ import java.time.Duration;
  *   <li>{@code PUT} and {@code DELETE /api/watchlist/{id}}: per signed-in user (not per address, so a shared network does
  *       not penalise anybody and one user cannot dodge it by switching address). Answered with HTTP 429 as a problem
  *       document the app can show.</li>
+ *   <li>{@code GET} of the public catalog and game pages (see {@link SecurityConfig#PUBLIC_READS}) by a guest: per client
+ *       address, answered with HTTP 429. A signed-in reader is not counted here: an account is accountable, and the reads
+ *       that cost the most are the ones a guest can reach.</li>
  * </ul>
  *
- * Both kinds carry a {@code Retry-After} header. Everything else, including every read, is untouched.
+ * Every kind carries a {@code Retry-After} header. Everything else, including a signed-in user's reads, is untouched.
  */
 final class RateLimitFilter extends OncePerRequestFilter {
+
+    private static final AntPathMatcher PATHS = new AntPathMatcher();
 
     private final RateLimits limits;
 
@@ -57,6 +63,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
         } else if (isGet && SteamOpenIdService.CALLBACK_PATH.equals(path)) {
             decision = limits.callback().tryAcquire(ClientIp.keyOf(request));
             browserRedirect = true;
+        } else if (isGet && isPublicRead(path)) {
+            if (signedInUser() == null) {
+                decision = limits.browse().tryAcquire(ClientIp.keyOf(request));
+            }
         } else if (isWatchWrite(request, path)) {
             String user = signedInUser();
             if (user != null) { // an anonymous request is turned away by the security rules; counting it would help nobody
@@ -73,6 +83,15 @@ final class RateLimitFilter extends OncePerRequestFilter {
         } else {
             tooManyRequests(response, decision.retryAfter());
         }
+    }
+
+    private static boolean isPublicRead(String path) {
+        for (String pattern : SecurityConfig.PUBLIC_READS) {
+            if (PATHS.match(pattern, path)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isWatchWrite(HttpServletRequest request, String path) {

@@ -15,6 +15,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       script could otherwise spend the app's Steam request budget
  * @param steamChecks    ALL sign-in checks sent to Steam, summed over every client: the ceiling that still holds when an
  *                       attacker spreads requests over many addresses
+ * @param browse         a guest (nobody signed in) reading the public catalog and game pages, per client address. A search
+ *                       over 190,000 games is real work, and unlike the rest it needs no account, so it is paced
  */
 @ConfigurationProperties("app.security.rate-limit")
 public record RateLimitProperties(
@@ -23,7 +25,8 @@ public record RateLimitProperties(
         Rule login,
         Rule callback,
         Rule watch,
-        Rule steamChecks) {
+        Rule steamChecks,
+        Rule browse) {
 
     /** A token bucket: {@code burst} requests at once, refilled at {@code perMinute} a minute. */
     public record Rule(int burst, int perMinute) {
@@ -42,9 +45,10 @@ public record RateLimitProperties(
         callback = callback == null ? new Rule(10, 10) : callback;
         watch = watch == null ? new Rule(60, 60) : watch;
         steamChecks = steamChecks == null ? new Rule(60, 1_200) : steamChecks; // 20 a second, far above any real sign-in rate
+        browse = browse == null ? new Rule(60, 120) : browse; // a page of Discover is about four requests, typing a search a few more
     }
 
     static RateLimitProperties disabled() {
-        return new RateLimitProperties(false, 100_000, null, null, null, null);
+        return new RateLimitProperties(false, 100_000, null, null, null, null, null);
     }
 }

@@ -38,6 +38,18 @@ describe('WatchButton', () => {
     await waitFor(() => expect(calls.some((c) => c.method === 'PUT' && c.headers['X-XSRF-TOKEN'] === 't')).toBe(true));
   });
 
+  it('offers a guest a way to sign in with Steam, back to this very page, instead of a watch toggle', async () => {
+    const { calls } = stubApi({ 'GET /api/watchlist': () => jsonResponse({}, 401) });
+    renderApp(<WatchButton game={game} />, '/games/1?tab=notes');
+
+    const link = await screen.findByRole('link', { name: 'Sign in with Steam to watch RuneScape: Dragonwilds' });
+    expect(link).toHaveAttribute('href', `/api/auth/steam/login?next=${encodeURIComponent('/games/1?tab=notes')}`);
+    expect(screen.queryByRole('button')).toBeNull();
+    // a guest is a definite answer, not a failure to retry: one request, not three
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls.filter((c) => c.url.includes('/api/watchlist'))).toHaveLength(1);
+  });
+
   it('snaps back and tells the user when the server refuses', async () => {
     stubApi({
       'GET /api/watchlist': () => jsonResponse([]),

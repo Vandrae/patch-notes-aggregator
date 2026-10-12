@@ -18,6 +18,8 @@ stack with HTTPS.
 
 - **Sign in with Steam** (OpenID 2.0, implemented by hand). No passwords and no email: Steam gives the app a SteamID and
   your public name and avatar, and nothing else.
+- **Browse as a guest** first, if you like: search the catalog and open any game's page and patch notes without an account. Following games and
+  the feed need the Steam sign-in. A guest is only ever read-only and nothing about a guest is stored ([how it is kept safe](docs/security-and-compliance.md#guest-mode)).
 - **Search every Steam game**, ranked by relevance and popularity, with genre, review-rating and age-rating filters.
   [How the catalog works](docs/catalog-and-search.md).
 - **Follow games** and read a feed of their patch notes. Each game has its own page with its follower count and full
