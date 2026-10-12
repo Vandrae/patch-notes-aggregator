@@ -38,9 +38,14 @@ export function LoginPage() {
         )}
 
         {/* A full page navigation on purpose: the server redirects to Steam and back. */}
-        <a className="btn btn-steam" href={steamLoginUrl(next)}>
-          Sign in through Steam
-        </a>
+        <div className="login-actions">
+          <a className="btn btn-steam" href={steamLoginUrl(next)}>
+            Sign in through Steam
+          </a>
+          <Link className="btn btn-guest" to="/discover">
+            Browse as a guest
+          </Link>
+        </div>
         <p className="fine-print">
           You sign in on Steam's own page. We only receive your public Steam name and avatar: no password, no email.{' '}
           <Link to="/privacy">Privacy</Link>

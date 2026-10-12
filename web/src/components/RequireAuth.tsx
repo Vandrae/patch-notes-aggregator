@@ -1,11 +1,10 @@
-import type { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ApiError } from '../api';
 import { useMe } from '../queries';
 import { ErrorState } from './States';
 
-/** Renders its children only for a signed-in user; everyone else is sent to the sign-in page and brought back after. */
-export function RequireAuth({ children }: { children: ReactNode }) {
+/** Renders the page under it only for a signed-in user; everyone else is sent to the sign-in page and brought back after. */
+export function RequireAuth() {
   const { data: user, error, isPending, refetch } = useMe();
   const location = useLocation();
 
@@ -21,11 +20,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return <Navigate to={`/login?next=${next}`} replace />;
   }
   if (error || !user) {
-    return (
-      <div className="page">
-        <ErrorState message="We couldn't reach the server." onRetry={() => void refetch()} />
-      </div>
-    );
+    return <ErrorState message="We couldn't reach the server." onRetry={() => void refetch()} />;
   }
-  return <>{children}</>;
+  return <Outlet />;
 }

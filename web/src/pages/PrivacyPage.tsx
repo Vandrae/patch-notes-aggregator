@@ -28,6 +28,12 @@ export function PrivacyPage() {
         note and a link to the original post, not the post itself.
       </p>
 
+      <h2>Browsing as a guest</h2>
+      <p>
+        You can look around without signing in: search the catalog, and open a game's page and its patch notes. A guest has no account, so nothing about a guest is kept: no name,
+        no list, nothing written to the database. To follow games and get a feed you sign in with Steam.
+      </p>
+
       <h2>What we don't do</h2>
       <ul>
         <li>No advertising, no analytics, no tracking scripts and no selling or sharing of your data.</li>

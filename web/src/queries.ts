@@ -25,8 +25,13 @@ export function useMe() {
   });
 }
 
+/** A guest has no watchlist: 401 is the answer "not signed in", so it is not retried (and WatchButton reads it as "guest"). */
 export function useWatchlist() {
-  return useQuery({ queryKey: keys.watchlist, queryFn: () => api.get<WatchlistItem[]>('/api/watchlist') });
+  return useQuery({
+    queryKey: keys.watchlist,
+    queryFn: () => api.get<WatchlistItem[]>('/api/watchlist'),
+    retry: (failures, error) => !(error instanceof ApiError && error.status === 401) && failures < 2,
+  });
 }
 
 /** After watching a game the first patch notes arrive a few seconds later, so an empty feed re-checks briefly. */

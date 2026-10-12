@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -52,6 +53,15 @@ class SecurityConfig {
             "form-action 'self'",
             "frame-ancestors 'none'");
 
+    /**
+     * What a guest (nobody signed in) may READ: the catalog and a game's page. All of it is public Steam data or patch
+     * notes the app already shows, and none of it says anything about any user (a game's activity is only a count of
+     * followers). Everything else under /api (the feed, the watchlist, the account) needs a signed-in user.
+     */
+    static final String[] PUBLIC_READS = {
+            "/api/games", "/api/games/*", "/api/games/*/patch-notes", "/api/games/*/activity",
+            "/api/catalog/status", "/api/catalog/filters"};
+
     /** Browser features the app never uses, switched off for it and anything embedded in it. */
     static final String PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
 
@@ -82,6 +92,7 @@ class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/steam/**", "/api/auth/logout", "/actuator/health/**", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .requestMatchers("/actuator/**").denyAll()
                         // everything else is the single-page app's static files and client-side routes

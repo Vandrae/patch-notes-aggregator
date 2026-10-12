@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ApiError } from '../api';
+import { useLocation } from 'react-router-dom';
+import { ApiError, steamLoginUrl } from '../api';
 import { useAnnounce } from '../hooks';
 import { useToggleWatch, useWatchlist } from '../queries';
 import type { Game } from '../types';
@@ -15,7 +16,33 @@ function shortNotice(error: unknown): string {
   return 'Try again';
 }
 
+/**
+ * Follow / stop following a game. A guest (the watchlist answers 401) gets a link to sign in with Steam instead, which
+ * brings them back to this very page; so does someone whose session ran out while the page was open.
+ */
 export function WatchButton({ game }: { game: Game }) {
+  const { error } = useWatchlist();
+  if (error instanceof ApiError && error.status === 401) {
+    return <SignInToWatch game={game} />;
+  }
+  return <WatchToggle game={game} />;
+}
+
+function SignInToWatch({ game }: { game: Game }) {
+  const location = useLocation();
+  return (
+    <a
+      className="btn btn-primary"
+      href={steamLoginUrl(location.pathname + location.search)}
+      aria-label={`Sign in with Steam to watch ${game.name}`}
+      title="Sign in with Steam to follow games and get their patch notes"
+    >
+      + Watch
+    </a>
+  );
+}
+
+function WatchToggle({ game }: { game: Game }) {
   const { data: watchlist } = useWatchlist();
   const toggle = useToggleWatch();
   const announce = useAnnounce();

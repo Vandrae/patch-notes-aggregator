@@ -21,6 +21,7 @@ class RateLimits {
     private final KeyedRateLimiter callback;
     private final KeyedRateLimiter watch;
     private final KeyedRateLimiter steamChecks;
+    private final KeyedRateLimiter browse;
 
     @Autowired
     RateLimits(RateLimitProperties props, MeterRegistry meters) {
@@ -33,6 +34,7 @@ class RateLimits {
         this.callback = limiter("callback", props.callback(), props, meters, nanoTime);
         this.watch = limiter("watch", props.watch(), props, meters, nanoTime);
         this.steamChecks = limiter("steam_checks", props.steamChecks(), props, meters, nanoTime);
+        this.browse = limiter("browse", props.browse(), props, meters, nanoTime);
     }
 
     /** No limits at all, for tests of other things. */
@@ -60,6 +62,10 @@ class RateLimits {
 
     KeyedRateLimiter watch() {
         return watch;
+    }
+
+    KeyedRateLimiter browse() {
+        return browse;
     }
 
     /** May one more sign-in check be sent to Steam right now? One shared budget for every client together. */

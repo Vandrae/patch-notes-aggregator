@@ -552,6 +552,22 @@ a.row-title:hover {
 .login-hero .notice {
   margin-bottom: 18px;
 }
+.login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.btn-guest {
+  min-height: 52px;
+  padding-inline: 24px;
+  font-size: 1.05rem;
+}
+.btn-sm {
+  min-height: 34px;
+  padding: 4px 14px;
+  font-size: 0.9rem;
+}
 .fine-print {
   margin: 18px auto 0;
   max-width: 52ch;

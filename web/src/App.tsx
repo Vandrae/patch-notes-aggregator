@@ -15,18 +15,16 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
-      <Route
-        element={
-          <RequireAuth>
-            <Shell />
-          </RequireAuth>
-        }
-      >
-        <Route path="/feed" element={<FeedPage />} />
+      <Route element={<Shell />}>
+        {/* open to guests: the catalog and a game's page (the server only lets a guest READ these) */}
         <Route path="/discover" element={<DiscoverPage />} />
         <Route path="/games/:id" element={<GamePage />} />
-        <Route path="/watchlist" element={<WatchlistPage />} />
-        <Route path="/account" element={<AccountPage />} />
+        {/* about a person: sign in with Steam first */}
+        <Route element={<RequireAuth />}>
+          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/account" element={<AccountPage />} />
+        </Route>
       </Route>
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<NotFoundPage />} />

@@ -34,7 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "app.security.rate-limit.login.burst=3", "app.security.rate-limit.login.per-minute=1",
         "app.security.rate-limit.callback.burst=2", "app.security.rate-limit.callback.per-minute=1",
-        "app.security.rate-limit.watch.burst=3", "app.security.rate-limit.watch.per-minute=1"})
+        "app.security.rate-limit.watch.burst=3", "app.security.rate-limit.watch.per-minute=1",
+        "app.security.rate-limit.browse.burst=3", "app.security.rate-limit.browse.per-minute=1"})
 @AutoConfigureMockMvc(print = MockMvcPrint.NONE)
 @ActiveProfiles("test")
 class RateLimitTest {
@@ -169,6 +170,48 @@ class RateLimitTest {
         // while a different user on the same address is untouched
         mvc.perform(put("/api/watchlist/{id}", 999_992).with(newUser()).with(csrf()).with(from("198.51.100.7")))
                 .andExpect(status().isNotFound());
+    }
+
+    // ------------------------------------------------------------------ a guest browsing
+
+    @Test
+    void aGuestsBrowsingIsPacedPerAddressWithAReadableAnswer() throws Exception {
+        double before = refused("browse");
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(get("/api/catalog/filters").with(from("198.51.100.21"))).andExpect(status().isOk());
+        }
+
+        mvc.perform(get("/api/catalog/filters").with(from("198.51.100.21")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, org.hamcrest.Matchers.matchesPattern("\\d+")))
+                .andExpect(jsonPath("$.detail").value(containsString("too quickly")));
+        assertThat(refused("browse")).isEqualTo(before + 1);
+
+        // the allowance belongs to the address: another guest is untouched
+        mvc.perform(get("/api/catalog/filters").with(from("198.51.100.22"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void theGuestLimitCoversEveryPublicReadAndNothingElse() throws Exception {
+        String address = "198.51.100.23";
+        // one allowance is shared by the whole public catalog, however the guest spreads the requests
+        mvc.perform(get("/api/games").with(from(address))).andExpect(status().isOk());
+        mvc.perform(get("/api/catalog/status").with(from(address))).andExpect(status().isOk());
+        mvc.perform(get("/api/games/{id}", 999_999_998).with(from(address))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/games").with(from(address))).andExpect(status().isTooManyRequests());
+
+        // a route that is not public is turned away as usual, never as "too many requests"
+        mvc.perform(get("/api/feed").with(from(address))).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void aSignedInReaderIsNotCountedAgainstTheGuestLimit() throws Exception {
+        RequestPostProcessor user = newUser();
+        for (int i = 0; i < 12; i++) {
+            mvc.perform(get("/api/catalog/filters").with(user).with(from("198.51.100.24"))).andExpect(status().isOk());
+        }
+        // and the same address as a guest still has its whole allowance
+        mvc.perform(get("/api/catalog/filters").with(from("198.51.100.24"))).andExpect(status().isOk());
     }
 
     @Test

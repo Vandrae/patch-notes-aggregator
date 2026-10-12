@@ -24,10 +24,11 @@ it), and following games (each new game gets fetched from Steam). Each has a lim
 | Checks sent to Steam, from all sign-ins together | the whole app | 60, 1200 | the same redirect (applied after the cheap local checks, so forged callbacks cannot use it up) |
 | Following or unfollowing a game (`PUT`/`DELETE /api/watchlist/{id}`) | signed-in user | 60, 60 | `429` problem document with `Retry-After` |
 | Games on one list | signed-in user | 500 in total | `409` with a plain explanation |
+| A guest reading the public catalog and game pages (see [guest mode](#guest-mode)) | client address | 60, 120 | `429` problem document with `Retry-After` |
 
-Reading is never limited. The browser shows "Too many sign-in attempts" on the login page and "Slow down" / "List full" on the
+A signed-in user's reading is never limited. The browser shows "Too many sign-in attempts" on the login page and "Slow down" / "List full" on the
 Watch button. Change a limit with, for example, `APP_SECURITY_RATE_LIMIT_LOGIN_BURST=5` or `APP_WATCHLIST_MAX_GAMES=200` (the
-keys are `app.security.rate-limit.{login,callback,watch,steam-checks}.{burst,per-minute}`, `app.security.rate-limit.enabled`
+keys are `app.security.rate-limit.{login,callback,watch,steam-checks,browse}.{burst,per-minute}`, `app.security.rate-limit.enabled`
 and `app.security.rate-limit.max-tracked-keys`; memory is bounded because a bucket is dropped once it has refilled).
 
 **Which address is "the client"?** The limiter only ever uses the address Tomcat reports for the connection. Behind Caddy
@@ -36,6 +37,22 @@ and `app.security.rate-limit.max-tracked-keys`; memory is bounded because a buck
 them a fresh allowance. This is tested over real HTTP (`ClientAddressBehindProxyTest`, `ClientAddressDirectTest`), because
 mock requests cannot show it. IPv6 visitors are grouped by /64 (one home network), since one person has billions of addresses.
 Refusals are counted in the `patchnotes.ratelimit.refused{rule}` metric and logged as one summary line a minute, without addresses.
+
+## Guest mode
+
+Anyone may look around before signing in with Steam: search the catalog, and open a game's page and its patch notes. A guest
+can only READ, and only what is already public.
+
+- **What is open** is one list in `SecurityConfig` (`PUBLIC_READS`, GET only): `/api/games`, `/api/games/{id}`,
+  `/api/games/{id}/patch-notes`, `/api/games/{id}/activity`, `/api/catalog/status` and `/api/catalog/filters`. All of it is Steam's public
+  catalog or patch-note excerpts the app already shows, and a game's activity is only a count of followers (a test checks it names nobody).
+- **Everything else under `/api` still needs a signed-in user**: the feed, the watchlist, the account, and every write. A route is
+  open only if it is on that list: `GuestBrowsingTest` checks near misses (`/api/games/1/anything`, `/api/catalog`) and that `POST`/`PUT`/`DELETE`
+  on an open path are still refused.
+- **Nothing about a guest is stored**: no account, no session, no list. The page only sets the anti-forgery cookie every visitor gets.
+- **Reading costs real work** (a search over 190,000 games), so a guest is rate limited per address (table above), where a signed-in
+  reader is not. The page-size cap (50) and the missing-game 404 apply to everyone.
+- **The Watch button becomes "Sign in with Steam"** for a guest, which returns them to the same page after signing in.
 
 ## What is logged
 

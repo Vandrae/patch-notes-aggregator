@@ -138,12 +138,26 @@ class GameHistoryTest {
     }
 
     @Test
-    void anUnknownGameIsNotFoundAndAnonymousCallersAreTurnedAway() throws Exception {
+    void anUnknownGameIsNotFoundForGuestsAndUsersAlike() throws Exception {
         mvc.perform(get("/api/games/{id}/patch-notes", 999_999_999).with(user())).andExpect(status().isNotFound());
         mvc.perform(get("/api/games/{id}/activity", 999_999_999).with(user())).andExpect(status().isNotFound());
+        // a guest gets the same answer, not a demand to sign in: a game's page is public
+        mvc.perform(get("/api/games/{id}/patch-notes", 999_999_999)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/games/{id}/activity", 999_999_999)).andExpect(status().isNotFound());
+    }
 
+    @Test
+    void aGuestReadsAGamesNotesAndActivityWithoutSigningIn() throws Exception {
         long game = newGame();
-        mvc.perform(get("/api/games/{id}/patch-notes", game)).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/games/{id}/activity", game)).andExpect(status().isUnauthorized());
+        addPatchNotes(game, 2);
+        watchlist.watch(userId(), game);
+
+        mvc.perform(get("/api/games/{id}/patch-notes", game))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2));
+        mvc.perform(get("/api/games/{id}/activity", game))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.watcherCount").value(1))
+                .andExpect(jsonPath("$.length()").value(3)); // still only a count and two facts, even for a stranger
     }
 }

@@ -228,7 +228,7 @@ class SteamOpenIdServiceTest {
     private SteamOpenIdService serviceWithSteamCheckBudget(int burst, java.util.concurrent.atomic.AtomicLong clock) {
         RestClient.Builder builder = RestClient.builder();
         steam = MockRestServiceServer.bindTo(builder).build();
-        var limits = new RateLimits(new RateLimitProperties(true, 1_000, null, null, null, new RateLimitProperties.Rule(burst, 1)),
+        var limits = new RateLimits(new RateLimitProperties(true, 1_000, null, null, null, new RateLimitProperties.Rule(burst, 1), null),
                 new io.micrometer.core.instrument.simple.SimpleMeterRegistry(), clock::get);
         return new SteamOpenIdService(new SteamLoginProperties(ENDPOINT, BASE), builder.build(), limits);
     }
