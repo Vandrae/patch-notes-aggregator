@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml/badge.svg)](https://github.com/Vandrae/patch-notes-aggregator/actions/workflows/ci.yml)
 
+**Live: [patchnoteaggregator.com](https://patchnoteaggregator.com)**. Browse as a guest with no account, or sign in with Steam to follow games.
+
 `main` is protected: every change goes through a pull request, and it can only be merged once all four CI jobs pass (the
 backend tests, the frontend tests, the real-browser tests, and a full Docker and MySQL smoke test). See [Testing and CI](docs/testing.md).
 
@@ -27,8 +29,11 @@ stack with HTTPS.
 - **Games that are not on Steam** (Roblox, Minecraft, League of Legends, VALORANT) are read from the publishers' own feeds.
   Adding another game that offers a feed is one entry of configuration, no code. [Details and the rules for adding one](docs/non-steam-games.md).
 - **Careful with other people's content and your data**: it keeps a short excerpt and a link back, never the full post;
-  it logs no addresses or secrets; rate limits protect the sign-in and the Steam calls; there is a privacy page and one
-  button to delete your account.
+  it logs no addresses or secrets; rate limits protect the sign-in, the Steam calls and guest browsing; there is a privacy
+  page and one button to delete your account.
+- **Looked after like a real service**: GitHub secret scanning, Dependabot for the libraries, the Actions and the Docker images,
+  CI steps pinned to exact commits, nightly database backups, and a [security review](docs/security-and-compliance.md) of the whole app.
+  [What is protected and how](docs/security-and-compliance.md).
 
 ## Screenshots
 
@@ -40,7 +45,7 @@ stack with HTTPS.
     </td>
     <td width="50%" valign="top">
       <img src="docs/screenshots/discover.png" alt="Discover: a grid of big cover tiles, the most popular games first, with Steam covers beside the logos of League of Legends, Roblox and VALORANT, which are not on Steam, and a lettered tile for Minecraft">
-      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular as a grid of big covers. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside with their publishers' logos (Minecraft has none to use).</sub>
+      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular as a grid of big covers; point at one (here Counter-Strike 2) for its rating, genres and a Watch button. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside with their publishers' logos (Minecraft has none to use). No account is needed to look.</sub>
     </td>
   </tr>
   <tr>
@@ -71,10 +76,10 @@ stack with HTTPS.
 
 | | |
 |---|---|
-| Backend | Java 21, Spring Boot 4, Spring Modulith (module boundaries checked by a test), Spring Security, Spring Data JPA, Flyway |
+| Backend | Java 21 (the Docker image runs it on Java 25), Spring Boot 4, Spring Modulith (module boundaries checked by a test), Spring Security, Spring Data JPA, Flyway |
 | Data | H2 for local runs, MySQL 8.4 for production |
 | Frontend | React 19, TypeScript, Vite, TanStack Query, React Router |
-| Run and ship | Docker, Caddy (automatic HTTPS), GitHub Actions |
+| Run and ship | Docker, Caddy (automatic HTTPS), GitHub Actions, Dependabot, AWS (one EC2 server) |
 | Tests | JUnit, Testcontainers (real MySQL), Vitest and Testing Library, Playwright |
 
 ## Quick start
@@ -165,9 +170,12 @@ Dockerfile, compose.prod.yaml, Caddyfile  the production stack
 
 ## Status
 
-Feature-complete and ready to deploy; not yet running on a public address. Ideas not built: a slower polling tier for games
-that have not been patched in a year, an OpenAPI description of the API, ending a session before its 7 days are up, and more
-non-Steam games (the rest of the most-streamed ones publish no official feed yet; see [the list](docs/non-steam-games.md)).
+Feature-complete and **running live** at [patchnoteaggregator.com](https://patchnoteaggregator.com), on one small AWS EC2
+server with the Docker stack in [deployment](docs/deployment.md): Caddy for HTTPS, the app, and MySQL, with a database dump
+every night. It is a portfolio project on a small machine, not a service with an uptime promise. Ideas not built: a slower
+polling tier for games that have not been patched in a year, an OpenAPI description of the API, ending a session before its 7
+days are up, a watchlist that guests can keep in their browser, and more non-Steam games (the rest of the most-streamed ones
+publish no official feed yet; see [the list](docs/non-steam-games.md)).
 
 *Not affiliated with Valve, Riot Games, Roblox or Mojang. Steam is a trademark of Valve Corporation; League of Legends and VALORANT are
 trademarks of Riot Games, Inc.; Roblox is a trademark of Roblox Corporation; Minecraft is a trademark of Mojang Synergies AB.*
