@@ -37,8 +37,8 @@ stack with HTTPS.
       <br><sub><b>The feed.</b> Patch notes from every game you follow, newest first: a short excerpt and a link to the full notes. The filters wait behind one button.</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/screenshots/discover.png" alt="Discover: the most popular games first, with Steam covers beside the logos of League of Legends, Roblox and VALORANT, which are not on Steam, and a lettered tile for Minecraft">
-      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside with their publishers' logos (Minecraft has none to use).</sub>
+      <img src="docs/screenshots/discover.png" alt="Discover: a grid of big cover tiles, the most popular games first, with Steam covers beside the logos of League of Legends, Roblox and VALORANT, which are not on Steam, and a lettered tile for Minecraft">
+      <br><sub><b>Finding games.</b> Search all of Steam (about 190,000 games), or browse the most popular as a grid of big covers. Games that are not on Steam, like League of Legends, Minecraft, Roblox and VALORANT, sit alongside with their publishers' logos (Minecraft has none to use).</sub>
     </td>
   </tr>
   <tr>

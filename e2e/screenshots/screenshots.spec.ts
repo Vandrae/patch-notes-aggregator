@@ -73,6 +73,9 @@ test('take the README screenshots', async ({ page, browser }) => {
   await expect(page.getByText(/most popular first/)).toBeVisible();
   await expect(page.getByRole('link', { name: 'Roblox', exact: true })).toBeVisible();
   await picturesLoaded(page);
+  // the pointer over one picture shows its details panel
+  await page.locator('li.tile').filter({ has: page.getByRole('link', { name: exactly('Counter-Strike 2') }) }).hover();
+  await expect(page.locator('li.tile:hover .tile-details')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: `${OUT}/discover.png` });
 
   // 4. the Filters panel open, with a genre and an age rating chosen

@@ -78,4 +78,31 @@ describe('GameMeta', () => {
     expect(screen.queryByRole('link')).toBeNull();
     expect(screen.getByText(/from the publisher/i)).toBeInTheDocument();
   });
+
+  describe('as a Discover tile', () => {
+    const header = 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1422450/abc/header.jpg?t=1';
+
+    it("starts with Steam's wide header picture", () => {
+      const { container } = render(<GameThumb game={game} variant="tile" />);
+
+      expect(container.querySelector('img.game-thumb-tile')).toHaveAttribute('src', header);
+    });
+
+    it('falls back to the small capsule when there is no header, then to a generated tile', () => {
+      const { container } = render(<GameThumb game={game} variant="tile" />);
+
+      fireEvent.error(container.querySelector('img')!);
+      expect(container.querySelector('img')).toHaveAttribute('src', game.imageUrl);
+
+      fireEvent.error(container.querySelector('img')!);
+      expect(container.querySelector('img')).toBeNull();
+      expect(container.querySelector('.game-tile')).toHaveTextContent('DE');
+    });
+
+    it("uses a non-Steam game's own art as it is", () => {
+      const { container } = render(<GameThumb game={{ ...game, imageUrl: '/art/roblox-cover.png' }} variant="tile" />);
+
+      expect(container.querySelector('img')).toHaveAttribute('src', '/art/roblox-cover.png');
+    });
+  });
 });

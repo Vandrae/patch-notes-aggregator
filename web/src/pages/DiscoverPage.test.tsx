@@ -77,7 +77,11 @@ describe('DiscoverPage', () => {
     const { container } = renderApp(<DiscoverPage />);
 
     expect(await screen.findByText('Deadlock is a multiplayer game in early development.')).toBeInTheDocument();
-    expect(container.querySelector('img.game-thumb')).toHaveAttribute('src', detailed.imageUrl!);
+    // each game is a big tile: Steam's wide header picture, found beside the stored capsule
+    expect(container.querySelector('img.game-thumb-tile')).toHaveAttribute(
+      'src',
+      'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1422450/abc/header.jpg?t=1',
+    );
     expect(screen.getByRole('link', { name: /view on steam/i }).querySelector('svg.steam-logo')).toBeInTheDocument();
     expect(screen.getByText(/most popular first/i)).toBeInTheDocument();
   });
@@ -220,10 +224,11 @@ describe('DiscoverPage', () => {
       const { container } = renderApp(<DiscoverPage />);
 
       await screen.findByText('Elden Ring');
-      await waitFor(() => expect(container.querySelector('.tags')).toHaveTextContent('Action'));
-      const badges = container.querySelector('.tags');
-      expect(badges).toHaveTextContent('Overwhelmingly Positive · 96%');
-      expect(badges).toHaveTextContent('RPG');
+      // the details panel of the game's tile: the rating in Steam's words with the percentage, and the genres by name
+      await waitFor(() => expect(container.querySelector('.tile-stats')).toHaveTextContent('Action'));
+      const stats = container.querySelector('.tile-stats');
+      expect(stats).toHaveTextContent('Overwhelmingly Positive · 96%');
+      expect(stats).toHaveTextContent('RPG');
     });
 
     it('explains an empty filtered result, and clearing the filters brings the games back', async () => {
