@@ -736,7 +736,8 @@ a.row-title:hover {
   flex: none;
 }
 @media (max-width: 480px) {
-  .game-thumb,
+  /* the small capsule beside a name in a list (the big picture on a Discover tile keeps filling its tile) */
+  .game-thumb:not(.game-thumb-tile),
   .row-game .game-tile {
     width: 84px !important;
     height: 32px !important;
@@ -1206,6 +1207,10 @@ body:has(.tile-grid) .footer {
   .tile-desc,
   .tile-foot-text {
     display: none;
+  }
+  /* the strip already names the game, so a picture-less tile need not name it a second time */
+  .game-tile[data-name]::after {
+    content: none;
   }
   .tile-foot {
     margin-top: 0;
