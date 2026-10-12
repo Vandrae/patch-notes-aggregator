@@ -77,7 +77,11 @@ describe('DiscoverPage', () => {
     const { container } = renderApp(<DiscoverPage />);
 
     expect(await screen.findByText('Deadlock is a multiplayer game in early development.')).toBeInTheDocument();
-    expect(container.querySelector('img.game-thumb')).toHaveAttribute('src', detailed.imageUrl!);
+    // each game is a big tile: Steam's wide header picture, found beside the stored capsule
+    expect(container.querySelector('img.game-thumb-tile')).toHaveAttribute(
+      'src',
+      'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1422450/abc/header.jpg?t=1',
+    );
     expect(screen.getByRole('link', { name: /view on steam/i }).querySelector('svg.steam-logo')).toBeInTheDocument();
     expect(screen.getByText(/most popular first/i)).toBeInTheDocument();
   });

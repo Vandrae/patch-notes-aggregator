@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hueFor, initials, safeExternalUrl, safeImageSrc, timeAgo } from './format';
+import { hueFor, initials, safeExternalUrl, safeImageSrc, timeAgo, wideImageSrc } from './format';
 
 describe('timeAgo', () => {
   const now = new Date('2026-10-01T12:00:00Z');
@@ -75,5 +75,23 @@ describe('safeImageSrc', () => {
     }
     expect(safeImageSrc(null)).toBeUndefined();
     expect(safeImageSrc(undefined)).toBeUndefined();
+  });
+});
+
+describe('wideImageSrc', () => {
+  it("finds the wide header picture next to Steam's small capsule", () => {
+    expect(wideImageSrc('https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/capsule_231x87.jpg?t=17')).toBe(
+      'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/header.jpg?t=17',
+    );
+    expect(wideImageSrc('https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1/abc/capsule_231x87.jpg')).toBe(
+      'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1/abc/header.jpg',
+    );
+  });
+
+  it('leaves any other address as it is, and still refuses unsafe ones', () => {
+    expect(wideImageSrc('/art/roblox-cover.png')).toBe('/art/roblox-cover.png');
+    expect(wideImageSrc('https://example.com/x.png')).toBe('https://example.com/x.png');
+    expect(wideImageSrc('javascript:alert(1)')).toBeUndefined();
+    expect(wideImageSrc(null)).toBeUndefined();
   });
 });

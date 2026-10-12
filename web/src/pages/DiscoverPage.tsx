@@ -105,19 +105,23 @@ export function DiscoverPage() {
             {filtering ? ' fit your filters' : ''}
             {q ?` matching "${q}" · ranked by relevance and popularity` : ' · most popular first'}
           </p>
-          <ul className="list card">
+          <ul className="tile-grid">
             {results.map((game) => (
-              <li key={game.id} className="row row-game">
-                <GameThumb game={game} />
-                <div className="row-main">
-                  <Link className="row-title" to={`/games/${game.id}`}>
-                    {game.name}
-                  </Link>
+              <li key={game.id} className="tile">
+                <div className="tile-art">
+                  <GameThumb game={game} variant="tile" />
+                </div>
+                <div className="tile-body">
+                  <div className="tile-head">
+                    <Link className="row-title tile-title" to={`/games/${game.id}`}>
+                      {game.name}
+                    </Link>
+                    <WatchButton game={game} />
+                  </div>
                   {game.shortDescription && <p className="row-desc">{game.shortDescription}</p>}
                   <GameBadges game={game} />
                   <GameMeta game={game} />
                 </div>
-                <WatchButton game={game} />
               </li>
             ))}
           </ul>

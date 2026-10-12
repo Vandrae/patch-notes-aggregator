@@ -63,3 +63,12 @@ export function safeImageSrc(url: string | null | undefined): string | undefined
   if (!url) return undefined;
   return url.startsWith('https://') || OWN_ART.test(url) ? url : undefined;
 }
+
+/**
+ * The wide "header" picture of a Steam game (460 by 215, the shape of a Discover tile), found next to the small capsule whose
+ * address we store: they sit side by side under the same Steam asset path. Anything else is returned as it is.
+ */
+export function wideImageSrc(url: string | null | undefined): string | undefined {
+  const safe = safeImageSrc(url);
+  return safe?.replace(/\/capsule_231x87\.jpg/, '/header.jpg');
+}
