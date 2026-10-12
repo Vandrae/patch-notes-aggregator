@@ -8,7 +8,7 @@
 # ======================================================================================================
 # Stage 1 - build. A full JDK. Thrown away afterwards; nothing from here ships except the jar.
 # ======================================================================================================
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:25-jdk AS build
 WORKDIR /workspace
 
 # Docker caches the result of every instruction (a "layer") and reuses it while the instruction and the files
@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp -DskipTests package \
 # ======================================================================================================
 # Stage 2 - runtime. A JRE only (no compiler, no Maven, no Node, no source code): smaller and less to attack.
 # ======================================================================================================
-FROM eclipse-temurin:21-jre AS runtime
+FROM eclipse-temurin:25-jre AS runtime
 
 # curl is only for the health check below.
 RUN apt-get update \
